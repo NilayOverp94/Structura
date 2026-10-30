@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams, useParams } from 'next/navigation';
 import { 
   FileCode2, 
   Folder, 
@@ -22,22 +22,45 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DEMO_REPOSITORY, DEMO_FILES } from '@/lib/demo-data';
 import { formatFileSize, cn } from '@/lib/utils';
+import { Repository, RepositoryFile } from '@/types';
 
 function FileExplorerContent() {
+  const params = useParams();
+  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
   const searchParams = useSearchParams();
   const fileQuery = searchParams.get('file');
 
-  const repository = DEMO_REPOSITORY;
-  const files = DEMO_FILES;
+  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
+  const [files, setFiles] = useState<RepositoryFile[]>(DEMO_FILES);
 
-  const [selectedFile, setSelectedFile] = useState(
-    files.find(f => f.file_path === fileQuery) || files[0]
+  const [selectedFile, setSelectedFile] = useState<RepositoryFile>(
+    DEMO_FILES.find((f) => f.file_path === fileQuery) || DEMO_FILES[0]
   );
   const [search, setSearch] = useState('');
   const [copied, setCopied] = useState(false);
   const [explaining, setExplaining] = useState(false);
   const [selectedCode, setSelectedCode] = useState('');
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}/files`).then((r) => r.json()),
+    ])
+      .then(([repoData, filesData]) => {
+        if (repoData?.repository) setRepository(repoData.repository);
+        if (filesData?.files && filesData.files.length > 0) {
+          setFiles(filesData.files);
+          const initial = fileQuery
+            ? filesData.files.find((f: any) => f.file_path === fileQuery) || filesData.files[0]
+            : filesData.files[0];
+          setSelectedFile(initial);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch workspace files:', err);
+      });
+  }, [repoId, fileQuery]);
 
   const filteredFiles = useMemo(() => {
     if (!search.trim()) return files;
@@ -53,7 +76,8 @@ function FileExplorerContent() {
   const handleExplainFile = async () => {
     setExplaining(true);
     try {
-      const res = await fetch(`/api/repositories/${repository.id}/explain`, {
+      const activeId = repoId || repository.id;
+      const res = await fetch(`/api/repositories/${activeId}/explain`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filePath: selectedFile.file_path, content: selectedFile.content }),

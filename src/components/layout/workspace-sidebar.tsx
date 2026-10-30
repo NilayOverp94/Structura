@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useParams } from 'next/navigation';
 import { 
   Layers, 
   Network, 
@@ -24,7 +24,9 @@ interface WorkspaceSidebarProps {
 
 export function WorkspaceSidebar({ repository }: WorkspaceSidebarProps) {
   const pathname = usePathname();
-  const baseUrl = `/workspace/${repository.id}`;
+  const params = useParams();
+  const activeRepoId = (params?.repositoryId as string) || repository.id;
+  const baseUrl = `/workspace/${activeRepoId}`;
 
   const navItems = [
     { label: 'Overview', href: baseUrl, icon: Layers, exact: true },

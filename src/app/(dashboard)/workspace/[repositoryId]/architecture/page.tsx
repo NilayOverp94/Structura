@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import ReactFlow, { 
   Background, 
@@ -27,6 +28,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { DEMO_REPOSITORY, DEMO_INSIGHTS } from '@/lib/demo-data';
+import { Repository } from '@/types';
 
 // Custom Node styles
 const initialNodes: Node[] = [
@@ -164,12 +166,79 @@ const initialEdges: Edge[] = [
 ];
 
 export default function ArchitecturePage() {
-  const repository = DEMO_REPOSITORY;
+  const params = useParams();
+  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+
+  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node['data'] | null>(initialNodes[0].data);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'high-level' | 'detailed'>('high-level');
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}/architecture`).then((r) => r.json()),
+    ])
+      .then(([repoData, archData]) => {
+        if (repoData?.repository) setRepository(repoData.repository);
+
+        if (archData?.insights?.architecture?.layers && archData.insights.architecture.layers.length > 0) {
+          const layers = archData.insights.architecture.layers;
+          const dynamicNodes: Node[] = [];
+          const dynamicEdges: Edge[] = [];
+
+          layers.forEach((layer: any, idx: number) => {
+            const xPos = 80 + (idx % 3) * 320;
+            const yPos = 100 + Math.floor(idx / 3) * 160;
+            const nodeId = `layer-${idx}`;
+
+            dynamicNodes.push({
+              id: nodeId,
+              type: 'default',
+              data: {
+                label: `${layer.name}\n${layer.category || 'Module'}`,
+                category: layer.category || 'backend',
+                description: layer.description || `Handles ${layer.name} logic.`,
+                path: layer.files?.[0] || 'src/',
+                functions: layer.files || [],
+                incoming: idx > 0 ? [`layer-${idx - 1}`] : [],
+                outgoing: idx < layers.length - 1 ? [`layer-${idx + 1}`] : [],
+              },
+              position: { x: xPos, y: yPos },
+              style: {
+                background: '#1E293B',
+                color: '#F8FAFC',
+                border: idx === 0 ? '1px solid #3B82F6' : '1px solid #64748B',
+                borderRadius: 8,
+                padding: 10,
+                fontSize: 12,
+              },
+            });
+
+            if (idx > 0) {
+              dynamicEdges.push({
+                id: `edge-${idx - 1}-${idx}`,
+                source: `layer-${idx - 1}`,
+                target: nodeId,
+                animated: true,
+                markerEnd: { type: MarkerType.ArrowClosed },
+              });
+            }
+          });
+
+          if (dynamicNodes.length > 0) {
+            setNodes(dynamicNodes);
+            setEdges(dynamicEdges);
+            setSelectedNode(dynamicNodes[0].data);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load architecture graph:', err);
+      });
+  }, [repoId]);
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node.data);

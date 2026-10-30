@@ -2,15 +2,16 @@ import { GEMINI_CONFIG } from '@/config/constants';
 import { generateEmbedding, hasGeminiKey } from '@/lib/gemini/client';
 import { SearchResult, CodeChunk } from '@/types';
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import { DEMO_FILES } from '@/lib/demo-data';
+import { RepositoryStore } from '@/lib/repository/store';
 
-function searchDemoFiles(query: string, limit: number = 5): SearchResult[] {
+async function searchStoreFiles(repositoryId: string, query: string, limit: number = 5): Promise<SearchResult[]> {
+  const files = await RepositoryStore.getFiles(repositoryId);
   const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
   const results: SearchResult[] = [];
 
-  for (const file of DEMO_FILES) {
+  for (const file of files) {
     const lines = file.content.split('\n');
-    const chunkSize = 20;
+    const chunkSize = 25;
 
     for (let i = 0; i < lines.length; i += chunkSize) {
       const slice = lines.slice(i, i + chunkSize);
@@ -29,8 +30,8 @@ function searchDemoFiles(query: string, limit: number = 5): SearchResult[] {
           file_path: file.file_path,
           similarity: Math.min((score + 1) / ((keywords.length || 1) * 3), 0.95),
           chunk: {
-            id: `demo-${file.id}-${i}`,
-            repository_id: file.repository_id,
+            id: `chunk-${file.id}-${i}`,
+            repository_id: file.repository_id || repositoryId,
             file_id: file.id,
             chunk_index: Math.floor(i / chunkSize),
             content: chunkText,
@@ -54,10 +55,6 @@ export async function semanticSearch(
   query: string,
   limit: number = GEMINI_CONFIG.maxChunksPerQuery
 ): Promise<SearchResult[]> {
-  if (repositoryId.startsWith('demo-')) {
-    return searchDemoFiles(query, limit);
-  }
-
   try {
     const supabase = createServiceRoleClient();
     const queryEmbedding = await generateEmbedding(query);
@@ -69,13 +66,8 @@ export async function semanticSearch(
       match_count: limit,
     });
 
-    if (error) {
-      console.warn('Supabase vector RPC fallback to content matching:', error.message);
-      return fallbackKeywordSearch(repositoryId, query, limit);
-    }
-
-    if (!data || data.length === 0) {
-      return fallbackKeywordSearch(repositoryId, query, limit);
+    if (error || !data || data.length === 0) {
+      return searchStoreFiles(repositoryId, query, limit);
     }
 
     return (data || []).map((item: any) => ({
@@ -95,8 +87,7 @@ export async function semanticSearch(
       file_path: item.metadata?.file_path || '',
     }));
   } catch (error) {
-    console.warn('Semantic search error, using fallback:', error);
-    return fallbackKeywordSearch(repositoryId, query, limit);
+    return searchStoreFiles(repositoryId, query, limit);
   }
 }
 
@@ -105,10 +96,6 @@ export async function fallbackKeywordSearch(
   query: string,
   limit: number = 10
 ): Promise<SearchResult[]> {
-  if (repositoryId.startsWith('demo-')) {
-    return searchDemoFiles(query, limit);
-  }
-
   try {
     const supabase = createServiceRoleClient();
     const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
@@ -120,7 +107,7 @@ export async function fallbackKeywordSearch(
       .limit(50);
 
     if (error || !data || data.length === 0) {
-      return searchDemoFiles(query, limit);
+      return searchStoreFiles(repositoryId, query, limit);
     }
 
     const scored = data.map((chunk: any) => {
@@ -145,7 +132,7 @@ export async function fallbackKeywordSearch(
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, limit);
   } catch {
-    return searchDemoFiles(query, limit);
+    return searchStoreFiles(repositoryId, query, limit);
   }
 }
 
@@ -173,4 +160,3 @@ export function buildContextFromResults(results: SearchResult[]): string {
 
   return contextParts.join('\n\n');
 }
-

@@ -2,6 +2,10 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { sanitizeSupabaseUrl } from './client';
 
+if (typeof window === 'undefined' && typeof WebSocket === 'undefined') {
+  (global as any).WebSocket = class {};
+}
+
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
   

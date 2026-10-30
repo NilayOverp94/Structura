@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { DEMO_FILES } from '@/lib/demo-data';
-import { createServiceRoleClient } from '@/lib/supabase/server';
+import { RepositoryStore } from '@/lib/repository/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,28 +9,9 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-
-    if (id === 'demo-codecompass-repo') {
-      return NextResponse.json({ files: DEMO_FILES });
-    }
-
-    try {
-      const supabase = createServiceRoleClient();
-      const { data, error } = await supabase
-        .from('repository_files')
-        .select('id, file_path, language, file_size, blob_sha')
-        .eq('repository_id', id);
-
-      if (error || !data || data.length === 0) {
-        return NextResponse.json({ files: DEMO_FILES });
-      }
-
-      return NextResponse.json({ files: data });
-    } catch {
-      return NextResponse.json({ files: DEMO_FILES });
-    }
+    const files = await RepositoryStore.getFiles(id);
+    return NextResponse.json({ files });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

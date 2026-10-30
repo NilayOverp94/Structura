@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   MessageSquare, 
@@ -21,6 +22,7 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DEMO_REPOSITORY, DEMO_SUGGESTED_QUESTIONS } from '@/lib/demo-data';
+import { Repository } from '@/types';
 
 interface ChatMessage {
   id: string;
@@ -31,15 +33,37 @@ interface ChatMessage {
 }
 
 export default function AskCodebasePage() {
-  const repository = DEMO_REPOSITORY;
+  const params = useParams();
+  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+
+  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Hello! I am Structura, your AI codebase navigation engineer for **${repository.full_name}**.\n\nI answer questions grounded exclusively in the indexed source code and architecture of this repository. Every answer includes verifiable citations to actual file paths and line ranges.`,
+      content: `Hello! I am Structura, your AI codebase navigation engineer.\n\nI answer questions grounded exclusively in the indexed source code and architecture of this repository. Every answer includes verifiable citations to actual file paths and line ranges.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
+
+  useEffect(() => {
+    fetch(`/api/repositories/${repoId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.repository) {
+          setRepository(data.repository);
+          setMessages([
+            {
+              id: 'welcome',
+              role: 'assistant',
+              content: `Hello! I am Structura, your AI codebase navigation engineer for **${data.repository.full_name}**.\n\nI answer questions grounded exclusively in the indexed source code and architecture of this repository. Every answer includes verifiable citations to actual file paths and line ranges.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
+      })
+      .catch(() => {});
+  }, [repoId]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -69,7 +93,8 @@ export default function AskCodebasePage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/repositories/${repository.id}/chat`, {
+      const activeId = repoId || repository.id;
+      const response = await fetch(`/api/repositories/${activeId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: textToSend.trim() }),

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Map, 
@@ -8,40 +9,56 @@ import {
   Circle, 
   FileCode2, 
   Sparkles, 
-  ArrowRight,
-  HelpCircle,
-  TrendingUp,
+  ArrowRight, 
+  HelpCircle, 
+  TrendingUp, 
   Layers
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { DEMO_REPOSITORY, DEMO_ROADMAP } from '@/lib/demo-data';
+import { Repository, RoadmapPhase } from '@/types';
 
 export default function ContributorRoadmapPage() {
-  const repository = DEMO_REPOSITORY;
-  const initialRoadmap = DEMO_ROADMAP;
+  const params = useParams();
+  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
 
-  const [roadmap, setRoadmap] = useState(initialRoadmap.roadmap);
-  const [progress, setProgress] = useState<Record<string, boolean>>(initialRoadmap.progress);
+  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
+  const [roadmap, setRoadmap] = useState<RoadmapPhase[]>(DEMO_ROADMAP.roadmap);
+  const [progress, setProgress] = useState<Record<string, boolean>>(DEMO_ROADMAP.progress);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}/roadmap/generate`, { method: 'POST' }).then((r) => r.json()),
+    ])
+      .then(([repoData, roadmapData]) => {
+        if (repoData?.repository) setRepository(repoData.repository);
+        if (roadmapData?.roadmap && Array.isArray(roadmapData.roadmap)) {
+          setRoadmap(roadmapData.roadmap);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load roadmap:', err);
+      });
+  }, [repoId]);
 
   const toggleStep = (stepId: string) => {
     setProgress((prev) => {
       const updated = { ...prev, [stepId]: !prev[stepId] };
-      // Save progress to API
-      fetch(`/api/repositories/${repository.id}/roadmap/progress`, {
+      fetch(`/api/repositories/${repoId}/roadmap/progress`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stepId, completed: updated[stepId] }),
-      }).catch(err => console.warn('Progress update sync error:', err));
+      }).catch((err) => console.warn('Progress update sync error:', err));
       return updated;
     });
   };
 
-  const allSteps = roadmap.flatMap(p => p.steps);
-  const completedCount = allSteps.filter(s => progress[s.id]).length;
+  const allSteps = roadmap.flatMap((p) => p.steps);
+  const completedCount = allSteps.filter((s) => progress[s.id]).length;
   const totalCount = allSteps.length;
   const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
@@ -154,7 +171,7 @@ export default function ContributorRoadmapPage() {
                                 {step.relevant_files.map((file) => (
                                   <Link
                                     key={file}
-                                    href={`/workspace/${repository.id}/files?file=${encodeURIComponent(file)}`}
+                                    href={`/workspace/${repoId}/files?file=${encodeURIComponent(file)}`}
                                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-tertiary border border-border text-[11px] font-mono text-accent hover:border-accent transition-colors"
                                   >
                                     <FileCode2 className="h-3 w-3" />
@@ -177,4 +194,3 @@ export default function ContributorRoadmapPage() {
     </div>
   );
 }
-

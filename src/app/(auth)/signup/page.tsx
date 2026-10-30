@@ -29,13 +29,59 @@ function SignupForm() {
     setLoading(true);
 
     try {
-      // Step 1: Server-side account creation with automatic instant email confirmation
-      setStatusMessage('Creating verified developer account...');
+      const cleanEmail = email.trim();
+      const supabase = createClient();
+
+      setStatusMessage('Creating developer account...');
+
+      // First attempt: direct Supabase sign up (email verification is disabled)
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            username: username.trim() || cleanEmail.split('@')[0],
+          },
+        },
+      });
+
+      if (!signUpError && (signUpData?.session || signUpData?.user)) {
+        if (signUpData.session) {
+          window.location.href = redirect;
+          return;
+        }
+
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+
+        if (!signInErr) {
+          window.location.href = redirect;
+          return;
+        }
+      }
+
+      // If user already registered, automatically sign them in
+      if (signUpError?.message?.toLowerCase().includes('already registered')) {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        });
+
+        if (!signInErr) {
+          window.location.href = redirect;
+          return;
+        }
+      }
+
+      // Fallback: Server-side account creation with automatic instant confirmation
+      setStatusMessage('Setting up developer workspace...');
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim(),
+          email: cleanEmail,
           password,
           username: username.trim() || undefined,
         }),
@@ -43,25 +89,20 @@ function SignupForm() {
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create account.');
+      if (!response.ok && signUpError) {
+        throw new Error(signUpError.message || data.error || 'Failed to create account.');
       }
 
-      // Step 2: Immediately sign in to establish browser session & cookies
-      setStatusMessage('Signing in to your workspace...');
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+      const { error: finalSignInError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
         password,
       });
 
-      if (signInError) {
-        // Fallback: If sign in failed, redirect to login page with pre-filled state
-        router.push(`/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirect)}`);
+      if (finalSignInError) {
+        router.push(`/login?email=${encodeURIComponent(cleanEmail)}&redirect=${encodeURIComponent(redirect)}`);
         return;
       }
 
-      // Step 3: Full browser redirect so all session cookies propagate to middleware & server components
       window.location.href = redirect;
     } catch (err: any) {
       console.error('Signup error:', err);

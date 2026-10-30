@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -20,14 +20,26 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { parseGitHubUrl } from '@/lib/validation/github-url';
 import { DEMO_REPOSITORY } from '@/lib/demo-data';
+import { Repository } from '@/types';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [repoUrl, setRepoUrl] = useState('');
   const [error, setError] = useState('');
+  const [repositories, setRepositories] = useState<Repository[]>([DEMO_REPOSITORY]);
 
-  // Repositories list - includes demo repository and any user analyzed repos
-  const repositories = [DEMO_REPOSITORY];
+  useEffect(() => {
+    fetch('/api/repositories')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.repositories && Array.isArray(data.repositories)) {
+          setRepositories(data.repositories);
+        }
+      })
+      .catch(() => {
+        // Keep initial demo repo
+      });
+  }, []);
 
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();

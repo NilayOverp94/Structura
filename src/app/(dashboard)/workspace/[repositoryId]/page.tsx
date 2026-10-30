@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   Network, 
@@ -20,14 +21,28 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DEMO_REPOSITORY, DEMO_INSIGHTS } from '@/lib/demo-data';
+import { Repository, RepositoryInsights } from '@/types';
 
 export default function WorkspaceOverviewPage() {
   const params = useParams();
   const repoId = params.repositoryId as string;
 
-  // In demo mode or if repo is demo id, use DEMO_REPOSITORY
-  const repository = DEMO_REPOSITORY;
-  const insights = DEMO_INSIGHTS;
+  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
+  const [insights, setInsights] = useState<RepositoryInsights>(DEMO_INSIGHTS);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}/architecture`).then((r) => r.json()),
+    ])
+      .then(([repoData, insightsData]) => {
+        if (repoData?.repository) setRepository(repoData.repository);
+        if (insightsData?.insights) setInsights(insightsData.insights);
+      })
+      .catch((err) => {
+        console.warn('Could not load live repo workspace:', err);
+      });
+  }, [repoId]);
 
   return (
     <div className="min-h-screen bg-surface-primary flex flex-col">

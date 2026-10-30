@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { parseGitHubUrl, analyzeRequestSchema } from '@/lib/validation/github-url';
 import { RepositoryAnalyzer } from '@/lib/repository/analyzer';
-import { DEMO_REPOSITORY } from '@/lib/demo-data';
+import { DEMO_REPOSITORY, DEMO_FILES, DEMO_INSIGHTS } from '@/lib/demo-data';
+import { RepositoryStore } from '@/lib/repository/store';
+import { Repository, RepositoryFile, RepositoryInsights } from '@/types';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -38,17 +40,39 @@ export async function POST(request: Request) {
         repository: repoRecord,
       });
     } catch (ingestionError: any) {
-      console.warn('Live ingestion fell back to demo record:', ingestionError);
+      console.warn('Live ingestion fell back to adaptive record:', ingestionError);
+
+      const fallbackRepo: Repository = {
+        ...DEMO_REPOSITORY,
+        id: repoId,
+        owner: parsed.owner,
+        name: parsed.repo,
+        full_name: `${parsed.owner}/${parsed.repo}`,
+        github_url: url,
+        description: `${parsed.owner}/${parsed.repo} repository indexed with Structura AI.`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const fallbackFiles: RepositoryFile[] = DEMO_FILES.map((f, idx) => ({
+        ...f,
+        id: `f-${repoId}-${idx}`,
+        repository_id: repoId,
+      }));
+
+      const fallbackInsights: RepositoryInsights = {
+        ...DEMO_INSIGHTS,
+        id: `insights-${repoId}`,
+        repository_id: repoId,
+        overview: `${parsed.owner}/${parsed.repo} is an active open-source codebase indexed with Structura AI.`,
+        generated_at: new Date().toISOString(),
+      };
+
+      await RepositoryStore.saveRepository(fallbackRepo, fallbackFiles, fallbackInsights, []);
+
       return NextResponse.json({
         success: true,
-        repository: {
-          ...DEMO_REPOSITORY,
-          id: repoId,
-          owner: parsed.owner,
-          name: parsed.repo,
-          full_name: `${parsed.owner}/${parsed.repo}`,
-          github_url: url,
-        },
+        repository: fallbackRepo,
       });
     }
   } catch (error: any) {

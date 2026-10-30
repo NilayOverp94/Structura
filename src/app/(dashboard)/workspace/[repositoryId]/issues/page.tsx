@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Bug, 
@@ -18,14 +19,26 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DEMO_REPOSITORY, DEMO_LOCATE_EXAMPLES } from '@/lib/demo-data';
-import { LocateResult } from '@/types';
+import { LocateResult, Repository } from '@/types';
 
 export default function BugFeatureLocatorPage() {
-  const repository = DEMO_REPOSITORY;
+  const params = useParams();
+  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+
+  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<LocateResult[]>(DEMO_LOCATE_EXAMPLES[0].results);
   const [summary, setSummary] = useState<string>(DEMO_LOCATE_EXAMPLES[0].summary);
+
+  useEffect(() => {
+    fetch(`/api/repositories/${repoId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.repository) setRepository(data.repository);
+      })
+      .catch(() => {});
+  }, [repoId]);
 
   const sampleQueries = [
     'Where is user authentication and password validation handled?',
@@ -41,7 +54,7 @@ export default function BugFeatureLocatorPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/repositories/${repository.id}/locate`, {
+      const response = await fetch(`/api/repositories/${repoId}/locate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q.trim() }),

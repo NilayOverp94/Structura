@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { DEMO_REPOSITORY } from '@/lib/demo-data';
-import { createServiceRoleClient } from '@/lib/supabase/server';
+import { RepositoryStore } from '@/lib/repository/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,28 +11,13 @@ export async function GET(
   try {
     const { id } = params;
 
-    if (id === 'demo-codecompass-repo') {
-      return NextResponse.json({ repository: DEMO_REPOSITORY });
+    const repository = await RepositoryStore.getRepository(id);
+    if (repository) {
+      return NextResponse.json({ repository });
     }
 
-    try {
-      const supabase = createServiceRoleClient();
-      const { data, error } = await supabase
-        .from('repositories')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error || !data) {
-        return NextResponse.json({ repository: DEMO_REPOSITORY });
-      }
-
-      return NextResponse.json({ repository: data });
-    } catch {
-      return NextResponse.json({ repository: DEMO_REPOSITORY });
-    }
+    return NextResponse.json({ repository: DEMO_REPOSITORY });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

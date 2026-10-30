@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
+import { RepositoryStore } from '@/lib/repository/store';
 import { DEMO_FILES } from '@/lib/demo-data';
-import { createServiceRoleClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,23 +10,10 @@ export async function GET(
 ) {
   try {
     const { id, fileId } = params;
+    const file = await RepositoryStore.getFile(id, fileId);
 
-    const file = DEMO_FILES.find(f => f.id === fileId || f.file_path === fileId);
     if (file) {
       return NextResponse.json({ file });
-    }
-
-    try {
-      const supabase = createServiceRoleClient();
-      const { data } = await supabase
-        .from('repository_files')
-        .select('*')
-        .eq('id', fileId)
-        .single();
-
-      if (data) return NextResponse.json({ file: data });
-    } catch {
-      // Fallback
     }
 
     return NextResponse.json({ file: DEMO_FILES[0] });
@@ -34,4 +21,3 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-

@@ -45,7 +45,8 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   try {
     const model = getEmbeddingModel();
     const result = await model.embedContent(text.slice(0, 8000));
-    return result.embedding.values;
+    const values = result.embedding.values;
+    return values.length > 768 ? values.slice(0, 768) : values;
   } catch (error) {
     console.error('Error generating embedding with Gemini:', error);
     return createMockEmbedding(text);
@@ -89,8 +90,9 @@ export async function generateJSON<T>(prompt: string, systemInstruction?: string
   });
 
   const result = await model.generateContent(prompt);
-  const text = result.response.text();
-  return JSON.parse(text) as T;
+  const rawText = result.response.text();
+  const cleanText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  return JSON.parse(cleanText) as T;
 }
 
 function createMockEmbedding(text: string): number[] {

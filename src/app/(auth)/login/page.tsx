@@ -69,7 +69,10 @@ function LoginForm() {
 
       if (signInError) throw signInError;
 
-      const destination = urlParam ? `${redirect}?url=${encodeURIComponent(urlParam)}` : redirect;
+      let destination = redirect;
+      if (urlParam && !destination.includes('url=')) {
+        destination = `${destination}${destination.includes('?') ? '&' : '?'}url=${encodeURIComponent(urlParam)}`;
+      }
       // Use window.location.href for complete cookie sync with server middleware
       window.location.href = destination;
     } catch (err: any) {

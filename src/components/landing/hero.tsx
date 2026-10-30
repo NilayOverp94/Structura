@@ -27,7 +27,7 @@ export function Hero() {
       return;
     }
 
-    router.push(`/login?redirect=/analyze&url=${encodeURIComponent(repoUrl.trim())}`);
+    router.push(`/analyze?url=${encodeURIComponent(repoUrl.trim())}`);
   };
 
   return (

@@ -1,8 +1,12 @@
 import { createBrowserClient } from '@supabase/ssr';
 
+if (typeof window === 'undefined' && typeof WebSocket === 'undefined') {
+  (global as any).WebSocket = class {};
+}
+
 export function sanitizeSupabaseUrl(url?: string): string {
   if (!url) return '';
-  return url.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+  return url.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '').replace(/\/+$/, '');
 }
 
 export function createClient() {

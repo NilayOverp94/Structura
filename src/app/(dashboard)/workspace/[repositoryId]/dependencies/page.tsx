@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { 
   GitFork, 
   Search, 
@@ -8,21 +9,41 @@ import {
   ExternalLink, 
   Package, 
   ShieldCheck, 
-  Tag,
+  Tag, 
   Filter
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { DEMO_REPOSITORY, DEMO_DEPENDENCIES } from '@/lib/demo-data';
+import { DependencyInfo, Repository } from '@/types';
 
 export default function DependenciesPage() {
-  const repository = DEMO_REPOSITORY;
-  const dependencies = DEMO_DEPENDENCIES;
+  const params = useParams();
+  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+
+  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
+  const [dependencies, setDependencies] = useState<DependencyInfo[]>(DEMO_DEPENDENCIES);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'production' | 'development'>('all');
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}/dependencies`).then((r) => r.json()),
+    ])
+      .then(([repoData, depData]) => {
+        if (repoData?.repository) setRepository(repoData.repository);
+        if (depData?.dependencies && depData.dependencies.length > 0) {
+          setDependencies(depData.dependencies);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load live dependencies:', err);
+      });
+  }, [repoId]);
 
   const categories = useMemo(() => {
     const cats = new Set(dependencies.map(d => d.category || 'General'));
