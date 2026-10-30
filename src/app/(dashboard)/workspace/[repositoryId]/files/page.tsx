@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatFileSize, cn } from '@/lib/utils';
 import { Repository, RepositoryFile } from '@/types';
+import { getUserPreferences, UserPreferences, DEFAULT_USER_PREFERENCES } from '@/lib/settings/user-settings';
 
 function FileExplorerContent() {
   const params = useParams();
@@ -34,6 +35,11 @@ function FileExplorerContent() {
   const [explaining, setExplaining] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
+
+  useEffect(() => {
+    setPrefs(getUserPreferences());
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -215,15 +221,23 @@ function FileExplorerContent() {
                 )}
 
                 {/* Code Body */}
-                <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed bg-surface-secondary">
+                <div 
+                  className={cn(
+                    "flex-1 overflow-auto p-4 font-mono leading-relaxed bg-surface-secondary",
+                    prefs.wordWrap ? "whitespace-pre-wrap break-words" : "whitespace-pre"
+                  )}
+                  style={{ fontSize: prefs.codeFontSize }}
+                >
                   <table className="w-full border-collapse">
                     <tbody>
                       {lines.map((line, idx) => (
                         <tr key={idx} className="hover:bg-zinc-800/30">
-                          <td className="w-10 select-none text-right pr-4 text-txt-muted opacity-40 font-mono text-[11px]">
-                            {idx + 1}
-                          </td>
-                          <td className="text-txt-primary whitespace-pre font-mono">
+                          {prefs.showLineNumbers && (
+                            <td className="w-10 select-none text-right pr-4 text-txt-muted opacity-40 font-mono text-[11px]">
+                              {idx + 1}
+                            </td>
+                          )}
+                          <td className="text-txt-primary font-mono">
                             {line || ' '}
                           </td>
                         </tr>

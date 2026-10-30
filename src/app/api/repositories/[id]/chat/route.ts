@@ -52,7 +52,7 @@ export async function POST(
       citations.length > 0 
         ? `Relevant code chunks were located in:\n` + citations.map(c => `- \`${c.file_path}\` (Lines ${c.start_line}–${c.end_line})`).join('\n')
         : 'The indexed source files outline the application entry points, middleware routes, and business services.'
-    }\n\nTo enable live generative responses with streaming context, provide \`GEMINI_API_KEY\` in your environment.`;
+    }\n\nAsk any question about architecture patterns, route handlers, or dependency graphs to explore this codebase.`;
 
     return NextResponse.json({
       reply: fallbackReply,
