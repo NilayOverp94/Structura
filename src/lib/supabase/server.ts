@@ -1,11 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { sanitizeSupabaseUrl } from './client';
 
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
   
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = sanitizeSupabaseUrl(rawUrl);
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
@@ -32,16 +34,16 @@ export async function createServerSupabaseClient() {
 }
 
 export function createServiceRoleClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = sanitizeSupabaseUrl(rawUrl);
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
-      'Missing Supabase service role configuration. Set SUPABASE_SERVICE_ROLE_KEY in your .env.local file.'
+      'Missing Supabase service role configuration. Set SUPABASE_SERVICE_ROLE_KEY in your environment.'
     );
   }
 
-  // Use createServerClient without cookies for service role
   return createServerClient(supabaseUrl, serviceRoleKey, {
     cookies: {
       getAll() { return []; },

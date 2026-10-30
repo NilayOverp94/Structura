@@ -11,10 +11,10 @@ export default function TermsPage() {
           <p>Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           
           <h2 className="text-xl font-semibold text-txt-primary">1. Acceptance of Terms</h2>
-          <p>By accessing or using CodeCompass AI, you agree to be bound by these Terms of Service.</p>
+          <p>By accessing or using Structura, you agree to be bound by these Terms of Service.</p>
 
           <h2 className="text-xl font-semibold text-txt-primary">2. Description of Service</h2>
-          <p>CodeCompass AI is an AI-powered repository analysis platform that helps developers understand unfamiliar codebases by analyzing public GitHub repositories.</p>
+          <p>Structura is an AI-powered repository analysis platform that helps developers understand unfamiliar codebases by analyzing public GitHub repositories.</p>
 
           <h2 className="text-xl font-semibold text-txt-primary">3. Acceptable Use</h2>
           <ul className="list-disc pl-6 space-y-2">
@@ -28,7 +28,7 @@ export default function TermsPage() {
           <p>AI-generated explanations, architecture analyses, and code insights are provided as assistance tools. They may contain inaccuracies and should not be treated as authoritative documentation.</p>
 
           <h2 className="text-xl font-semibold text-txt-primary">5. Limitation of Liability</h2>
-          <p>CodeCompass AI is provided &quot;as is&quot; without warranties of any kind. We are not liable for any damages arising from your use of the service.</p>
+          <p>Structura is provided &quot;as is&quot; without warranties of any kind. We are not liable for any damages arising from your use of the service.</p>
 
           <h2 className="text-xl font-semibold text-txt-primary">6. Changes to Terms</h2>
           <p>We may modify these terms at any time. Continued use of the service constitutes acceptance of modified terms.</p>

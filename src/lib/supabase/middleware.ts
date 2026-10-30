@@ -1,11 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { sanitizeSupabaseUrl } from './client';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = sanitizeSupabaseUrl(rawUrl);
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   if (!supabaseUrl || !supabaseAnonKey) {
     return supabaseResponse;
@@ -29,6 +31,11 @@ export async function updateSession(request: NextRequest) {
   });
 
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Allow unauthenticated exploration of the demo workspace
+  if (request.nextUrl.pathname.startsWith('/workspace/demo-')) {
+    return supabaseResponse;
+  }
 
   // Protected routes
   const protectedPaths = ['/dashboard', '/analyze', '/workspace', '/settings'];

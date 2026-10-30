@@ -13,7 +13,7 @@ class GitHubClient {
   private async fetch(path: string, options: RequestInit = {}): Promise<Response> {
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'CodeCompass-AI',
+      'User-Agent': 'Structura-AI',
       ...(options.headers as Record<string, string> || {}),
     };
 

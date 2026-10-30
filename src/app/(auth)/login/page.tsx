@@ -39,7 +39,7 @@ function LoginForm() {
       router.refresh();
     } catch (err: any) {
       if (err.message?.includes('Missing Supabase') || err.message?.includes('FetchError') || err.message?.includes('Failed to fetch')) {
-        setError('Supabase connection not yet configured in .env.local. You can test local demo workspace at /workspace/demo-codecompass-repo.');
+        setError('Supabase connection is not yet configured or reachable. You can test the live demo workspace at /workspace/demo-codecompass-repo.');
       } else {
         setError(err.message || 'Failed to sign in. Please check your credentials.');
       }

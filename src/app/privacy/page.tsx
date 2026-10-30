@@ -11,7 +11,7 @@ export default function PrivacyPage() {
           <p>Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
           
           <h2 className="text-xl font-semibold text-txt-primary">1. Information We Collect</h2>
-          <p>CodeCompass AI collects the following information when you use our service:</p>
+          <p>Structura collects the following information when you use our service:</p>
           <ul className="list-disc pl-6 space-y-2">
             <li><strong className="text-txt-primary">Account Information:</strong> Email address and authentication credentials when you create an account.</li>
             <li><strong className="text-txt-primary">Repository Data:</strong> Public repository source code, metadata, and structure retrieved from GitHub for analysis purposes.</li>

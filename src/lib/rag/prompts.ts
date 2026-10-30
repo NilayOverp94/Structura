@@ -1,4 +1,4 @@
-export const RAG_SYSTEM_PROMPT = `You are CodeCompass AI, an expert software engineer and repository analysis assistant.
+export const RAG_SYSTEM_PROMPT = `You are Structura, an expert software engineer and repository analysis assistant.
 
 You must answer questions based on the actual repository context supplied to you.
 

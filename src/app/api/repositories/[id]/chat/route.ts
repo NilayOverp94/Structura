@@ -4,6 +4,9 @@ import { generateText, hasGeminiKey } from '@/lib/gemini/client';
 import { RAG_SYSTEM_PROMPT, buildChatPrompt } from '@/lib/rag/prompts';
 import { chatRequestSchema } from '@/lib/validation/github-url';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

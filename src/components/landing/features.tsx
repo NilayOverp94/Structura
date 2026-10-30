@@ -46,7 +46,7 @@ export function Features() {
             Everything you need to navigate unfamiliar code
           </h2>
           <p className="text-txt-secondary max-w-2xl mx-auto">
-            From high-level architecture to individual line explanations, CodeCompass AI gives you the tools to understand any repository.
+            From high-level architecture to individual line explanations, Structura gives you the tools to understand any repository.
           </p>
         </div>
 

@@ -45,7 +45,7 @@ function SignupForm() {
       }
     } catch (err: any) {
       if (err.message?.includes('Missing Supabase') || err.message?.includes('FetchError') || err.message?.includes('Failed to fetch')) {
-        setError('Supabase connection is not yet configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.');
+        setError('Supabase connection is not yet configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.');
       } else {
         setError(err.message || 'Failed to create account.');
       }

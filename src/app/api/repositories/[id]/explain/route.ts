@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { generateJSON, hasGeminiKey } from '@/lib/gemini/client';
 import { FILE_EXPLANATION_PROMPT, buildExplanationPrompt } from '@/lib/rag/prompts';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

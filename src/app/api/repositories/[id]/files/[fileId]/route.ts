@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { DEMO_FILES } from '@/lib/demo-data';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string; fileId: string } }

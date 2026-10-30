@@ -98,7 +98,7 @@ function AnalyzeForm() {
           <div className="border-b border-border pb-4">
             <h1 className="text-xl font-bold text-txt-primary">Repository Ingestion & Analysis</h1>
             <p className="text-xs text-txt-secondary mt-1">
-              CodeCompass AI inspects repository trees, classifies source files, detects framework topologies, and indexes AST chunks into the RAG vector store.
+              Structura inspects repository trees, classifies source files, detects framework topologies, and indexes AST chunks into the RAG vector store.
             </p>
           </div>
 

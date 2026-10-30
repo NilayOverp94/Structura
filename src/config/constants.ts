@@ -2,7 +2,7 @@ export const APP_CONFIG = {
   name: 'Structura',
   tagline: 'Understand Any Codebase',
   description: 'AI-powered repository intelligence platform that helps developers explore architecture, understand unfamiliar codebases, and contribute faster.',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  url: process.env.NEXT_PUBLIC_APP_URL || 'https://structura-eosin.vercel.app',
   brandColors: {
     primary: '#3B82F6',
     secondary: '#8B5CF6',

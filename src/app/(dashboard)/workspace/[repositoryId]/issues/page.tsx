@@ -79,7 +79,7 @@ export default function BugFeatureLocatorPage() {
               <h1 className="text-xl font-bold text-txt-primary">Bug & Feature Locator</h1>
             </div>
             <p className="text-xs text-txt-secondary mt-1">
-              Describe a feature you want to build or a bug you need to trace. CodeCompass AI performs hybrid vector search to pinpoint the relevant starting files.
+              Describe a feature you want to build or a bug you need to trace. Structura performs hybrid vector search to pinpoint the relevant starting files.
             </p>
           </div>
 

@@ -15,6 +15,16 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL(next, requestUrl.origin));
-}
+  // Optimize origin for Vercel deployments and custom domains
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const isLocal = process.env.NODE_ENV === 'development';
+  let origin = requestUrl.origin;
 
+  if (!isLocal && forwardedHost) {
+    origin = `https://${forwardedHost}`;
+  } else if (process.env.NEXT_PUBLIC_APP_URL) {
+    origin = process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '');
+  }
+
+  return NextResponse.redirect(new URL(next, origin));
+}

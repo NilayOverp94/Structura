@@ -3,6 +3,9 @@ import { parseGitHubUrl, analyzeRequestSchema } from '@/lib/validation/github-ur
 import { RepositoryAnalyzer } from '@/lib/repository/analyzer';
 import { DEMO_REPOSITORY } from '@/lib/demo-data';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

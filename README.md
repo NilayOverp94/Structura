@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  <a href="https://structura-eosin.vercel.app"><strong>🌐 Live Deployment: https://structura-eosin.vercel.app</strong></a>
+</p>
+
+<p align="center">
   AI-powered software architecture explorer, repository intelligence engine, and codebase onboarding assistant.
 </p>
 

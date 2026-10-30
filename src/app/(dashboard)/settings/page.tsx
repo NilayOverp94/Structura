@@ -63,7 +63,7 @@ export default function SettingsPage() {
               <p className="text-xs text-txt-secondary leading-relaxed">{cfg.description}</p>
 
               <div className="pt-2 flex items-center justify-between text-xs">
-                <span className="text-txt-muted text-[11px]">Configure in `.env.local`</span>
+                <span className="text-txt-muted text-[11px]">Configure in Vercel or `.env.local`</span>
                 <a
                   href={cfg.docsUrl}
                   target="_blank"

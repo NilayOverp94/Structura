@@ -46,7 +46,7 @@ async function bootstrap() {
   const server = createServer(app);
 
   server.listen(config.port, () => {
-    logger.info(\`CodeCompass Core running on port \${config.port}\`);
+    logger.info(\`Structura Core running on port \${config.port}\`);
   });
 }
 
@@ -259,7 +259,7 @@ export class RepoAnalysisService {
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     content: `{
-  "name": "codecompass-core",
+  "name": "structura-core",
   "version": "1.0.0",
   "description": "AI-Powered Codebase Navigation Engine",
   "main": "dist/index.js",
@@ -438,7 +438,7 @@ export const DEMO_ROADMAP: LearningPath = {
           title: 'Explore Repository Ingestion Service',
           explanation: 'Read src/services/repo-analysis-service.ts to trace GitHub tree fetching.',
           relevant_files: ['src/services/repo-analysis-service.ts'],
-          why_it_matters: 'The heart of CodeCompass AI analysis logic.',
+          why_it_matters: 'The heart of Structura repository intelligence and analysis logic.',
           difficulty: 'intermediate',
           completed: false,
         },
