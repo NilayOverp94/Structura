@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StructuraLogo } from '@/components/brand/structura-logo';
@@ -14,37 +14,106 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/dashboard';
   const urlParam = searchParams.get('url');
+  const initialEmail = searchParams.get('email') || '';
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (initialEmail && !email) {
+      setEmail(initialEmail);
+    }
+  }, [initialEmail, email]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setStatusMessage('');
     setLoading(true);
 
     try {
+      const cleanEmail = email.trim();
       const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+      let { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
         password,
       });
+
+      // If user is unconfirmed, auto-confirm them via backend and retry
+      if (signInError && (signInError.message?.toLowerCase().includes('not confirmed') || signInError.message?.toLowerCase().includes('email_not_confirmed'))) {
+        setStatusMessage('Auto-verifying your account...');
+        try {
+          const confirmRes = await fetch('/api/auth/auto-confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: cleanEmail }),
+          });
+
+          if (confirmRes.ok) {
+            // Retry sign in
+            const retry = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password,
+            });
+            signInError = retry.error;
+            data = retry.data;
+          }
+        } catch (e) {
+          console.warn('Auto-confirm retry error:', e);
+        }
+      }
 
       if (signInError) throw signInError;
 
       const destination = urlParam ? `${redirect}?url=${encodeURIComponent(urlParam)}` : redirect;
-      router.push(destination);
-      router.refresh();
+      // Use window.location.href for complete cookie sync with server middleware
+      window.location.href = destination;
     } catch (err: any) {
+      console.error('Login error:', err);
+      setStatusMessage('');
       if (err.message?.includes('Missing Supabase') || err.message?.includes('FetchError') || err.message?.includes('Failed to fetch')) {
-        setError('Supabase connection is not yet configured or reachable. You can test the live demo workspace at /workspace/demo-codecompass-repo.');
+        setError('Supabase connection is not reachable. You can test the live demo workspace.');
+      } else if (err.message?.includes('Invalid login credentials')) {
+        setError('Invalid email or password. If you need a quick account, click "Sign up" or use "Demo Sign In".');
       } else {
         setError(err.message || 'Failed to sign in. Please check your credentials.');
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDemoSignIn = async () => {
+    setError('');
+    setStatusMessage('');
+    setDemoLoading(true);
+    try {
+      const res = await fetch('/api/auth/demo-login', { method: 'POST' });
+      const data = await res.json();
+      const { email: demoEmail, password: demoPassword } = data.credentials;
+
+      setEmail(demoEmail);
+      setPassword(demoPassword);
+
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: demoEmail,
+        password: demoPassword,
+      });
+
+      if (signInError) throw signInError;
+
+      const destination = urlParam ? `${redirect}?url=${encodeURIComponent(urlParam)}` : redirect;
+      window.location.href = destination;
+    } catch (err: any) {
+      // Fallback directly to demo workspace
+      router.push('/workspace/demo-codecompass-repo');
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -64,7 +133,7 @@ function LoginForm() {
         <p className="mt-2 text-sm text-txt-secondary">
           Or{' '}
           <Link href={`/signup${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-accent hover:underline">
-            create a new account
+            create a new account (instant verification)
           </Link>
         </p>
       </div>
@@ -75,6 +144,13 @@ function LoginForm() {
             <div className="flex items-start gap-2.5 p-3 rounded-lg border border-status-error/30 bg-status-error-muted/20 text-xs text-status-error">
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {statusMessage && (
+            <div className="flex items-center gap-2 p-3 rounded-lg border border-accent/30 bg-accent/10 text-xs text-accent">
+              <Sparkles className="h-4 w-4 flex-shrink-0 animate-spin" />
+              <span>{statusMessage}</span>
             </div>
           )}
 
@@ -107,18 +183,31 @@ function LoginForm() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-surface-secondary px-2 text-txt-muted">Demo & Quick Preview</span>
+              <span className="bg-surface-secondary px-2 text-txt-muted">Demo & Instant Access</span>
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={handleDemoAccess}
-            className="w-full"
-          >
-            Explore Interactive Demo Workspace
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="secondary"
+              loading={demoLoading}
+              onClick={handleDemoSignIn}
+              className="w-full text-xs"
+            >
+              <Sparkles className="h-3.5 w-3.5 mr-1.5 text-accent" />
+              Sign in as Demo User (1-Click)
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleDemoAccess}
+              className="w-full text-xs text-txt-muted hover:text-txt-primary"
+            >
+              Explore Public Demo Workspace Without Sign-in
+            </Button>
+          </div>
         </div>
       </div>
     </div>

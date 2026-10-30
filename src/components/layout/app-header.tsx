@@ -26,8 +26,7 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
     } catch {
       // Ignore
     }
-    router.push('/login');
-    router.refresh();
+    window.location.href = '/login';
   };
 
   return (
