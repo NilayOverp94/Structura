@@ -36,14 +36,23 @@ export async function POST(
       snippet: r.chunk.content.slice(0, 150),
     }));
 
+    const clientKey = request.headers.get('x-gemini-key') || undefined;
+
     // Step 4: AI response
-    if (hasGeminiKey()) {
+    if (hasGeminiKey(clientKey)) {
       try {
         const prompt = buildChatPrompt(message, context);
-        const reply = await generateText(prompt, RAG_SYSTEM_PROMPT);
+        const reply = await generateText(prompt, RAG_SYSTEM_PROMPT, clientKey);
         return NextResponse.json({ reply, citations });
       } catch (err: any) {
         console.warn('Gemini chat failed, using context-grounded fallback:', err);
+        return NextResponse.json({
+          reply: `I encountered an issue generating a live AI response (${err.message || 'Gemini service error'}).\n\nBased on the indexed codebase files for repository \`${id}\`, here are the relevant code references located for your query:\n\n` +
+            (citations.length > 0 
+              ? citations.map(c => `- \`${c.file_path}\` (Lines ${c.start_line}–${c.end_line})`).join('\n')
+              : 'The indexed source files outline the application entry points, middleware routes, and business services.'),
+          citations,
+        });
       }
     }
 
@@ -52,7 +61,7 @@ export async function POST(
       citations.length > 0 
         ? `Relevant code chunks were located in:\n` + citations.map(c => `- \`${c.file_path}\` (Lines ${c.start_line}–${c.end_line})`).join('\n')
         : 'The indexed source files outline the application entry points, middleware routes, and business services.'
-    }\n\nAsk any question about architecture patterns, route handlers, or dependency graphs to explore this codebase.`;
+    }\n\nTo enable live generative responses with streaming context, set \`GEMINI_API_KEY\` in your environment or paste your key in Structura Settings > Code Intelligence.`;
 
     return NextResponse.json({
       reply: fallbackReply,

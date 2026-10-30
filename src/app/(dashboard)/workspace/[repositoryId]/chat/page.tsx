@@ -20,6 +20,7 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Repository } from '@/types';
+import { getUserPreferences, UserPreferences } from '@/lib/settings/user-settings';
 
 interface ChatMessage {
   id: string;
@@ -34,6 +35,7 @@ export default function AskCodebasePage() {
   const repoId = (params?.repositoryId as string) || '';
 
   const [repository, setRepository] = useState<Repository | null>(null);
+  const [prefs, setPrefs] = useState<UserPreferences | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -42,6 +44,10 @@ export default function AskCodebasePage() {
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
+
+  useEffect(() => {
+    setPrefs(getUserPreferences());
+  }, []);
 
   useEffect(() => {
     fetch(`/api/repositories/${repoId}`)
@@ -92,9 +98,14 @@ export default function AskCodebasePage() {
 
     try {
       const activeId = repoId || repository?.id;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (prefs?.geminiApiKey && prefs.geminiApiKey.trim()) {
+        headers['x-gemini-key'] = prefs.geminiApiKey.trim();
+      }
+
       const response = await fetch(`/api/repositories/${activeId}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ message: textToSend.trim() }),
       });
 
@@ -193,11 +204,15 @@ export default function AskCodebasePage() {
                 <div
                   className={`space-y-3 rounded-xl p-4 text-xs leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-zinc-800 text-white border border-zinc-700 max-w-xl'
+                      ? 'bg-zinc-900 dark:bg-zinc-800 text-zinc-100 border border-zinc-700/60 max-w-xl shadow-sm'
                       : 'card bg-surface-primary max-w-2xl'
                   }`}
                 >
-                  <div className="whitespace-pre-line text-txt-primary">
+                  <div
+                    className={`whitespace-pre-line ${
+                      msg.role === 'user' ? 'text-zinc-100 font-normal' : 'text-txt-primary'
+                    }`}
+                  >
                     {msg.content}
                   </div>
 
@@ -251,7 +266,7 @@ export default function AskCodebasePage() {
                 </div>
 
                 {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-lg bg-zinc-700 flex items-center justify-center flex-shrink-0 text-white">
+                  <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-zinc-100 shadow-sm">
                     <User className="h-4 w-4" />
                   </div>
                 )}

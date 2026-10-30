@@ -8,6 +8,7 @@ export interface UserPreferences {
   showLineNumbers: boolean;
   wordWrap: boolean;
   autoGenerateArchitecture: boolean;
+  geminiApiKey?: string;
 }
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
@@ -20,6 +21,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   showLineNumbers: true,
   wordWrap: false,
   autoGenerateArchitecture: true,
+  geminiApiKey: '',
 };
 
 const STORAGE_KEY = 'structura_user_preferences';

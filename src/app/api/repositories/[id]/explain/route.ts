@@ -16,10 +16,12 @@ export async function POST(
       return NextResponse.json({ error: 'filePath and content are required' }, { status: 400 });
     }
 
-    if (hasGeminiKey()) {
+    const clientKey = request.headers.get('x-gemini-key') || undefined;
+
+    if (hasGeminiKey(clientKey)) {
       try {
         const prompt = buildExplanationPrompt(filePath, content);
-        const explanationData = await generateJSON<any>(prompt, FILE_EXPLANATION_PROMPT);
+        const explanationData = await generateJSON<any>(prompt, FILE_EXPLANATION_PROMPT, clientKey);
         return NextResponse.json(explanationData);
       } catch (err) {
         console.warn('Gemini file explanation failed, using fallback:', err);

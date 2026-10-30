@@ -18,6 +18,7 @@ import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useTheme } from '@/components/theme-provider';
 import { 
   Network, 
   Search, 
@@ -33,6 +34,7 @@ import { Repository } from '@/types';
 export default function ArchitecturePage() {
   const params = useParams();
   const repoId = (params?.repositoryId as string) || '';
+  const { resolvedTheme } = useTheme();
 
   const [repository, setRepository] = useState<Repository | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -73,12 +75,13 @@ export default function ArchitecturePage() {
               },
               position: { x: xPos, y: yPos },
               style: {
-                background: '#121316',
-                color: '#EDEDED',
-                border: idx === 0 ? '1px solid #71717A' : '1px solid #27272A',
+                background: resolvedTheme === 'dark' ? '#121316' : '#FFFFFF',
+                color: resolvedTheme === 'dark' ? '#EDEDED' : '#090A0C',
+                border: resolvedTheme === 'dark' ? (idx === 0 ? '1px solid #71717A' : '1px solid #27272A') : (idx === 0 ? '1px solid #090A0C' : '1px solid #E4E5E8'),
                 borderRadius: 8,
                 padding: 10,
                 fontSize: 12,
+                boxShadow: resolvedTheme === 'dark' ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.06)',
               },
             });
 
@@ -184,11 +187,11 @@ export default function ArchitecturePage() {
                   minZoom={0.2}
                   maxZoom={1.5}
                 >
-                  <Background color="#27272A" gap={20} size={1} />
-                  <Controls className="bg-surface-secondary border-border text-txt-primary fill-txt-primary" />
+                  <Background color={resolvedTheme === 'dark' ? '#27272A' : '#D4D4D8'} gap={20} size={1} />
+                  <Controls className="border border-border rounded-lg overflow-hidden shadow-md" />
                   <MiniMap
-                    nodeColor={() => '#52525B'}
-                    maskColor="rgba(9, 10, 12, 0.7)"
+                    nodeColor={() => (resolvedTheme === 'dark' ? '#52525B' : '#A1A1AA')}
+                    maskColor={resolvedTheme === 'dark' ? 'rgba(9, 10, 12, 0.7)' : 'rgba(255, 255, 255, 0.7)'}
                     className="bg-surface-secondary border border-border rounded-lg"
                   />
                 </ReactFlow>

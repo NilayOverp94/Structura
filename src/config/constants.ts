@@ -47,12 +47,10 @@ export const GITHUB_CONFIG = {
 } as const;
 
 export const GEMINI_CONFIG = {
-  model: process.env.GEMINI_MODEL && process.env.GEMINI_MODEL !== 'gemini-1.5-flash'
-    ? process.env.GEMINI_MODEL 
-    : 'gemini-2.5-flash',
-  embeddingModel: process.env.GEMINI_EMBEDDING_MODEL && process.env.GEMINI_EMBEDDING_MODEL !== 'text-embedding-004'
-    ? process.env.GEMINI_EMBEDDING_MODEL 
-    : 'gemini-embedding-001',
+  model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  embeddingModel: process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
+  fallbackModels: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'] as readonly string[],
+  fallbackEmbeddingModels: ['gemini-embedding-001', 'text-embedding-004'] as readonly string[],
   maxTokens: 8192,
   temperature: 0.3,
   chunkSize: 1500,

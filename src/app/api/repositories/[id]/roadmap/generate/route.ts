@@ -16,11 +16,13 @@ export async function POST(
     const repo = await RepositoryStore.getRepository(id);
     const files = await RepositoryStore.getFiles(id);
 
-    if (hasGeminiKey() && files.length > 0) {
+    const clientKey = request.headers.get('x-gemini-key') || undefined;
+
+    if (hasGeminiKey(clientKey) && files.length > 0) {
       try {
         const fileList = files.slice(0, 20).map(f => f.file_path).join('\n');
         const prompt = `Repository: ${repo?.full_name || id}\nDescription: ${repo?.description || 'N/A'}\nPrimary Language: ${repo?.primary_language || 'TypeScript'}\n\nAvailable Repository Files:\n${fileList}`;
-        const roadmapData = await generateJSON<any>(prompt, ROADMAP_PROMPT);
+        const roadmapData = await generateJSON<any>(prompt, ROADMAP_PROMPT, clientKey);
 
         if (roadmapData?.phases && Array.isArray(roadmapData.phases)) {
           return NextResponse.json({ roadmap: roadmapData.phases });

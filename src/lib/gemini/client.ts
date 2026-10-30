@@ -1,27 +1,39 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_CONFIG } from '@/config/constants';
 
-let genAI: GoogleGenerativeAI | null = null;
+let cachedGenAI: { key: string; instance: GoogleGenerativeAI } | null = null;
 
-export function hasGeminiKey(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== '');
+export function getGeminiApiKey(customKey?: string): string | undefined {
+  if (customKey && customKey.trim().length > 0) {
+    return customKey.trim().replace(/^["']|["']$/g, '');
+  }
+  const key = 
+    process.env.GEMINI_API_KEY || 
+    process.env.GOOGLE_API_KEY || 
+    process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  return key?.trim()?.replace(/^["']|["']$/g, '');
 }
 
-function getGenAI(): GoogleGenerativeAI {
-  const key = process.env.GEMINI_API_KEY;
+export function hasGeminiKey(customKey?: string): boolean {
+  const key = getGeminiApiKey(customKey);
+  return Boolean(key && key.length > 0);
+}
+
+function getGenAI(customKey?: string): GoogleGenerativeAI {
+  const key = getGeminiApiKey(customKey);
   if (!key) {
     throw new Error(
-      'GEMINI_API_KEY is not configured in .env.local. Please obtain an API key from https://aistudio.google.com/app/apikey.'
+      'GEMINI_API_KEY is not configured. Please set GEMINI_API_KEY in your environment or provide it in Structura Settings.'
     );
   }
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(key);
+  if (!cachedGenAI || cachedGenAI.key !== key) {
+    cachedGenAI = { key, instance: new GoogleGenerativeAI(key) };
   }
-  return genAI;
+  return cachedGenAI.instance;
 }
 
-export function getModel(systemInstruction?: string): GenerativeModel {
-  return getGenAI().getGenerativeModel({
+export function getModel(systemInstruction?: string, customKey?: string): GenerativeModel {
+  return getGenAI(customKey).getGenerativeModel({
     model: GEMINI_CONFIG.model,
     generationConfig: {
       maxOutputTokens: GEMINI_CONFIG.maxTokens,
@@ -31,68 +43,150 @@ export function getModel(systemInstruction?: string): GenerativeModel {
   });
 }
 
-export function getEmbeddingModel(): GenerativeModel {
-  return getGenAI().getGenerativeModel({
+export function getEmbeddingModel(customKey?: string): GenerativeModel {
+  return getGenAI(customKey).getGenerativeModel({
     model: GEMINI_CONFIG.embeddingModel,
   });
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
-  if (!hasGeminiKey()) {
-    // Generate deterministic 768-dim pseudo vector for development if key absent
+export async function generateEmbedding(text: string, customKey?: string): Promise<number[]> {
+  if (!hasGeminiKey(customKey)) {
     return createMockEmbedding(text);
   }
-  try {
-    const model = getEmbeddingModel();
-    const result = await model.embedContent(text.slice(0, 8000));
-    const values = result.embedding.values;
-    return values.length > 768 ? values.slice(0, 768) : values;
-  } catch (error) {
-    console.error('Error generating embedding with Gemini:', error);
-    return createMockEmbedding(text);
+
+  const ai = getGenAI(customKey);
+  const modelsToTry = [
+    GEMINI_CONFIG.embeddingModel,
+    ...GEMINI_CONFIG.fallbackEmbeddingModels.filter((m) => m !== GEMINI_CONFIG.embeddingModel),
+  ];
+
+  for (const modelName of modelsToTry) {
+    try {
+      const model = ai.getGenerativeModel({ model: modelName });
+      const result = await model.embedContent(text.slice(0, 8000));
+      const values = result.embedding.values;
+      return values.length > 768 ? values.slice(0, 768) : values;
+    } catch (error: any) {
+      const msg = error?.message || '';
+      if (msg.includes('404') || msg.includes('not found') || msg.includes('unsupported')) {
+        continue;
+      }
+      console.warn(`Gemini embedding failed with model ${modelName}:`, error);
+    }
   }
+
+  return createMockEmbedding(text);
 }
 
-export async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
+export async function generateEmbeddingsBatch(texts: string[], customKey?: string): Promise<number[][]> {
   const results: number[][] = [];
   for (const text of texts) {
-    const emb = await generateEmbedding(text);
+    const emb = await generateEmbedding(text, customKey);
     results.push(emb);
   }
   return results;
 }
 
-export async function generateText(prompt: string, systemInstruction?: string): Promise<string> {
-  if (!hasGeminiKey()) {
+export async function generateText(
+  prompt: string,
+  systemInstruction?: string,
+  customKey?: string
+): Promise<string> {
+  if (!hasGeminiKey(customKey)) {
     throw new Error(
-      'GEMINI_API_KEY is missing. Please set GEMINI_API_KEY in .env.local to enable live AI responses.'
+      'GEMINI_API_KEY is missing. Please configure GEMINI_API_KEY in your environment or Settings.'
     );
   }
-  const model = getModel(systemInstruction);
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+
+  const ai = getGenAI(customKey);
+  const modelsToTry = [
+    GEMINI_CONFIG.model,
+    ...GEMINI_CONFIG.fallbackModels.filter((m) => m !== GEMINI_CONFIG.model),
+  ];
+
+  let lastError: any = null;
+  for (const modelName of modelsToTry) {
+    try {
+      const model = ai.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          maxOutputTokens: GEMINI_CONFIG.maxTokens,
+          temperature: GEMINI_CONFIG.temperature,
+        },
+        systemInstruction,
+      });
+
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (err: any) {
+      lastError = err;
+      const msg = err?.message || '';
+      // If error is 404 or unsupported model, cascade to next available model
+      if (
+        msg.includes('404') ||
+        msg.includes('not found') ||
+        msg.includes('unsupported') ||
+        msg.includes('ModelService')
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError || new Error('Failed to generate text with available Gemini models.');
 }
 
-export async function generateJSON<T>(prompt: string, systemInstruction?: string): Promise<T> {
-  if (!hasGeminiKey()) {
+export async function generateJSON<T>(
+  prompt: string,
+  systemInstruction?: string,
+  customKey?: string
+): Promise<T> {
+  if (!hasGeminiKey(customKey)) {
     throw new Error(
-      'GEMINI_API_KEY is missing. Please configure GEMINI_API_KEY to generate structured AI insights.'
+      'GEMINI_API_KEY is missing. Please configure GEMINI_API_KEY to generate structured insights.'
     );
   }
-  const model = getGenAI().getGenerativeModel({
-    model: GEMINI_CONFIG.model,
-    generationConfig: {
-      maxOutputTokens: GEMINI_CONFIG.maxTokens,
-      temperature: 0.1,
-      responseMimeType: 'application/json',
-    },
-    systemInstruction,
-  });
 
-  const result = await model.generateContent(prompt);
-  const rawText = result.response.text();
-  const cleanText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-  return JSON.parse(cleanText) as T;
+  const ai = getGenAI(customKey);
+  const modelsToTry = [
+    GEMINI_CONFIG.model,
+    ...GEMINI_CONFIG.fallbackModels.filter((m) => m !== GEMINI_CONFIG.model),
+  ];
+
+  let lastError: any = null;
+  for (const modelName of modelsToTry) {
+    try {
+      const model = ai.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          maxOutputTokens: GEMINI_CONFIG.maxTokens,
+          temperature: 0.1,
+          responseMimeType: 'application/json',
+        },
+        systemInstruction,
+      });
+
+      const result = await model.generateContent(prompt);
+      const rawText = result.response.text();
+      const cleanText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      return JSON.parse(cleanText) as T;
+    } catch (err: any) {
+      lastError = err;
+      const msg = err?.message || '';
+      if (
+        msg.includes('404') ||
+        msg.includes('not found') ||
+        msg.includes('unsupported') ||
+        msg.includes('ModelService')
+      ) {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError || new Error('Failed to generate structured data with available Gemini models.');
 }
 
 function createMockEmbedding(text: string): number[] {
@@ -101,8 +195,6 @@ function createMockEmbedding(text: string): number[] {
     const idx = (text.charCodeAt(i) * (i + 1)) % GEMINI_CONFIG.embeddingDimensions;
     vector[idx] = (vector[idx] + 0.1) % 1.0;
   }
-  // Normalize vector
   const norm = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0)) || 1;
-  return vector.map(v => v / norm);
+  return vector.map((v) => v / norm);
 }
-

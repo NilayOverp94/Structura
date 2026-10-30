@@ -426,6 +426,30 @@ export default function SettingsPage() {
                 </p>
               </div>
 
+              {/* Optional Gemini API Key Override */}
+              <div className="space-y-2 pt-2">
+                <label className="block text-xs font-medium text-txt-secondary">
+                  Google Gemini API Key
+                </label>
+                <div className="relative max-w-md">
+                  <Input
+                    type="password"
+                    value={prefs.geminiApiKey || ''}
+                    onChange={(e) => setPrefs({ ...prefs, geminiApiKey: e.target.value })}
+                    placeholder="Enter key to enable or override live AI responses..."
+                    className="text-xs font-mono pr-24"
+                  />
+                  {prefs.geminiApiKey ? (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-status-success font-medium flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Key Saved
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-[11px] text-txt-muted">
+                  Used directly for live codebase chat and explanations if not configured in the host environment.
+                </p>
+              </div>
+
               {/* AI Detail Level */}
               <div className="space-y-2 pt-2">
                 <label className="block text-xs font-medium text-txt-secondary">

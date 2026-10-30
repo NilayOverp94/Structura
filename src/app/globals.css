@@ -73,7 +73,7 @@
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-950 shadow-sm transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 focus:ring-offset-surface-primary disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black dark:hover:bg-zinc-200;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-zinc-900 text-white px-4 py-2.5 text-sm font-semibold shadow-sm transition-all hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 focus:ring-offset-surface-primary disabled:opacity-50 disabled:cursor-not-allowed dark:bg-white dark:text-black dark:hover:bg-zinc-200;
   }
 
   .btn-secondary {
@@ -107,4 +107,49 @@
   .gradient-text {
     @apply bg-gradient-to-b from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent;
   }
+}
+
+/* React Flow Controls & Minimap styling (High Contrast in both Dark & Light themes) */
+.react-flow__controls {
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: var(--surface-secondary) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+.react-flow__controls-button {
+  background: var(--surface-secondary) !important;
+  border-bottom: 1px solid var(--border) !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--surface-tertiary) !important;
+}
+
+.react-flow__controls-button svg {
+  fill: var(--txt-primary) !important;
+  stroke: var(--txt-primary) !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+}
+
+.react-flow__minimap {
+  background: var(--surface-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
 }
