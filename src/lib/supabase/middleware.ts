@@ -32,11 +32,6 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Allow unauthenticated exploration of the demo workspace
-  if (request.nextUrl.pathname.startsWith('/workspace/demo-')) {
-    return supabaseResponse;
-  }
-
   // Protected routes
   const protectedPaths = ['/dashboard', '/analyze', '/workspace', '/settings'];
   const isProtectedRoute = protectedPaths.some(path => 

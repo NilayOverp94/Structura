@@ -84,11 +84,11 @@ export function ProductPreview() {
                 
                 {/* Simulated nodes */}
                 {[
-                  { label: 'pages/', x: '15%', y: '20%', color: 'border-blue-500/30 bg-blue-500/5' },
-                  { label: 'server/', x: '55%', y: '15%', color: 'border-green-500/30 bg-green-500/5' },
-                  { label: 'client/', x: '35%', y: '55%', color: 'border-purple-500/30 bg-purple-500/5' },
-                  { label: 'shared/', x: '70%', y: '50%', color: 'border-amber-500/30 bg-amber-500/5' },
-                  { label: 'build/', x: '50%', y: '80%', color: 'border-cyan-500/30 bg-cyan-500/5' },
+                  { label: 'pages/', x: '15%', y: '20%', color: 'border-zinc-700 bg-zinc-800/40 text-zinc-300' },
+                  { label: 'server/', x: '55%', y: '15%', color: 'border-zinc-700 bg-zinc-800/40 text-zinc-300' },
+                  { label: 'client/', x: '35%', y: '55%', color: 'border-zinc-700 bg-zinc-800/40 text-zinc-300' },
+                  { label: 'shared/', x: '70%', y: '50%', color: 'border-zinc-700 bg-zinc-800/40 text-zinc-300' },
+                  { label: 'build/', x: '50%', y: '80%', color: 'border-zinc-700 bg-zinc-800/40 text-zinc-300' },
                 ].map((node) => (
                   <div
                     key={node.label}

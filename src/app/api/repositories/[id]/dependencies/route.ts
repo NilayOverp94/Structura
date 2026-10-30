@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { DEMO_DEPENDENCIES } from '@/lib/demo-data';
 import { RepositoryStore } from '@/lib/repository/store';
 import { extractDependencies } from '@/lib/analysis/dependency-analyzer';
 
@@ -14,12 +13,8 @@ export async function GET(
     const files = await RepositoryStore.getFiles(id);
     const extracted = extractDependencies(files);
 
-    if (extracted && extracted.length > 0) {
-      return NextResponse.json({ dependencies: extracted });
-    }
-
-    return NextResponse.json({ dependencies: DEMO_DEPENDENCIES });
+    return NextResponse.json({ dependencies: extracted || [] });
   } catch (error: any) {
-    return NextResponse.json({ dependencies: DEMO_DEPENDENCIES });
+    return NextResponse.json({ dependencies: [] });
   }
 }

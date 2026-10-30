@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StructuraLogo } from '@/components/brand/structura-logo';
@@ -18,7 +18,6 @@ function SignupForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
 
@@ -113,42 +112,18 @@ function SignupForm() {
     }
   };
 
-  const handleDemoSignIn = async () => {
-    setError('');
-    setDemoLoading(true);
-    try {
-      const res = await fetch('/api/auth/demo-login', { method: 'POST' });
-      const data = await res.json();
-      const { email: demoEmail, password: demoPassword } = data.credentials;
-
-      const supabase = createClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: demoEmail,
-        password: demoPassword,
-      });
-
-      if (signInError) throw signInError;
-      window.location.href = redirect;
-    } catch (err: any) {
-      // Direct access fallback to demo workspace
-      router.push('/workspace/demo-codecompass-repo');
-    } finally {
-      setDemoLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-surface-primary">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link href="/" className="inline-block mb-4">
-          <StructuraLogo size="md" showTagline={true} />
+          <StructuraLogo size="md" showTagline={false} />
         </Link>
         <h2 className="text-2xl font-bold tracking-tight text-txt-primary mt-2">
-          Create your account
+          Create your developer account
         </h2>
-        <p className="mt-2 text-sm text-txt-secondary">
+        <p className="mt-2 text-xs text-txt-secondary">
           Already have an account?{' '}
-          <Link href="/login" className="text-accent hover:underline">
+          <Link href="/login" className="text-txt-primary underline hover:text-white font-medium">
             Sign in
           </Link>
         </p>
@@ -164,8 +139,7 @@ function SignupForm() {
           )}
 
           {statusMessage && (
-            <div className="flex items-center gap-2 p-3 rounded-lg border border-accent/30 bg-accent/10 text-xs text-accent">
-              <Sparkles className="h-4 w-4 flex-shrink-0 animate-spin" />
+            <div className="flex items-center gap-2 p-3 rounded-lg border border-zinc-700 bg-zinc-800/30 text-xs text-txt-primary">
               <span>{statusMessage}</span>
             </div>
           )}
@@ -179,49 +153,34 @@ function SignupForm() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="developer42"
             />
+
             <Input
               label="Email address"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@domain.com"
+              placeholder="developer@example.com"
             />
+
             <Input
               label="Password"
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              hint="Minimum 8 characters — instant verification (no email wait)"
+              placeholder="••••••••"
             />
 
+            <p className="text-[11px] text-txt-muted leading-relaxed">
+              By creating an account, you agree to our Terms of Service and Privacy Policy.
+            </p>
+
             <Button type="submit" variant="primary" loading={loading} className="w-full">
-              Create Instant Account
+              Create Account
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-surface-secondary px-2 text-txt-muted">Or Instant Access</span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="secondary"
-            loading={demoLoading}
-            onClick={handleDemoSignIn}
-            className="w-full text-xs"
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5 text-accent" />
-            Sign in as Demo User (1-Click)
-          </Button>
         </div>
       </div>
     </div>

@@ -5,7 +5,6 @@ import { ProblemSection } from '@/components/landing/problem-section';
 import { Features } from '@/components/landing/features';
 import { HowItWorks } from '@/components/landing/how-it-works';
 import { ProductPreview } from '@/components/landing/product-preview';
-import { BrandSection } from '@/components/landing/brand-section';
 import { CTASection } from '@/components/landing/cta-section';
 
 export default function Home() {
@@ -17,7 +16,6 @@ export default function Home() {
       <Features />
       <HowItWorks />
       <ProductPreview />
-      <BrandSection />
       <CTASection />
       <Footer />
     </main>

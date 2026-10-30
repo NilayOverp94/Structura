@@ -8,10 +8,8 @@ import {
   Send, 
   Sparkles, 
   FileCode2, 
-  ExternalLink, 
   Copy, 
   Check, 
-  Info,
   CornerDownLeft,
   Bot,
   User,
@@ -21,7 +19,6 @@ import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DEMO_REPOSITORY, DEMO_SUGGESTED_QUESTIONS } from '@/lib/demo-data';
 import { Repository } from '@/types';
 
 interface ChatMessage {
@@ -34,21 +31,21 @@ interface ChatMessage {
 
 export default function AskCodebasePage() {
   const params = useParams();
-  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+  const repoId = (params?.repositoryId as string) || '';
 
-  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
+  const [repository, setRepository] = useState<Repository | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Hello! I am Structura, your AI codebase navigation engineer.\n\nI answer questions grounded exclusively in the indexed source code and architecture of this repository. Every answer includes verifiable citations to actual file paths and line ranges.`,
+      content: `Hello! I am Structura, your AI codebase navigation engineer.\n\nI answer technical questions grounded exclusively in the indexed source code and architecture of this repository. Every answer includes verifiable citations to actual file paths and line ranges.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
 
   useEffect(() => {
     fetch(`/api/repositories/${repoId}`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.repository) {
           setRepository(data.repository);
@@ -56,7 +53,7 @@ export default function AskCodebasePage() {
             {
               id: 'welcome',
               role: 'assistant',
-              content: `Hello! I am Structura, your AI codebase navigation engineer for **${data.repository.full_name}**.\n\nI answer questions grounded exclusively in the indexed source code and architecture of this repository. Every answer includes verifiable citations to actual file paths and line ranges.`,
+              content: `Hello! I am Structura, your AI codebase navigation engineer for **${data.repository.full_name}**.\n\nI answer technical questions grounded exclusively in the indexed source code and architecture of this repository. Ask about execution entry points, dependencies, or how to implement a specific feature.`,
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             },
           ]);
@@ -64,6 +61,7 @@ export default function AskCodebasePage() {
       })
       .catch(() => {});
   }, [repoId]);
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -75,7 +73,7 @@ export default function AskCodebasePage() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, loading]);
 
   const handleSend = async (queryText?: string) => {
     const textToSend = queryText || input;
@@ -93,7 +91,7 @@ export default function AskCodebasePage() {
     setLoading(true);
 
     try {
-      const activeId = repoId || repository.id;
+      const activeId = repoId || repository?.id;
       const response = await fetch(`/api/repositories/${activeId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,10 +114,14 @@ export default function AskCodebasePage() {
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      console.warn('Chat API error, providing grounded fallback:', err);
-      // If offline or without live credentials, provide a grounded demonstration answer
-      const fallbackReply = generateOfflineRAGReply(textToSend.trim(), repository.name);
-      setMessages((prev) => [...prev, fallbackReply]);
+      console.warn('Chat API error:', err);
+      const errorMsg: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: `Error: ${err.message || 'Could not query codebase. Please ensure the repository is indexed and try again.'}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
@@ -131,27 +133,42 @@ export default function AskCodebasePage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const suggestedQuestions = [
+    `How is the repository structured and what is the main entry point?`,
+    `What are the core dependencies and architectural boundaries?`,
+    `Where are the configuration manifests and environment variables defined?`,
+    `How do I run tests and build this project locally?`,
+  ];
+
   return (
     <div className="min-h-screen bg-surface-primary flex flex-col">
       <AppHeader />
 
       <div className="flex-1 flex overflow-hidden">
-        <WorkspaceSidebar repository={repository} />
+        <WorkspaceSidebar repository={repository || ({ id: repoId, name: repoId, owner: '', full_name: repoId, github_url: '', stars: 0, forks: 0, default_branch: 'main', analysis_status: 'completed', created_at: '', updated_at: '' } as Repository)} />
 
         <main className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-surface-secondary">
           {/* Chat Header */}
           <div className="h-12 border-b border-border bg-surface-primary px-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-accent" />
+              <MessageSquare className="h-4 w-4 text-txt-primary" />
               <span className="text-xs font-semibold text-txt-primary">Ask Your Codebase</span>
-              <Badge variant="info" className="text-[10px]">RAG Grounded</Badge>
             </div>
 
             <Button
-              size="sm"
               variant="ghost"
-              onClick={() => setMessages([messages[0]])}
-              className="text-xs h-7"
+              size="sm"
+              onClick={() => {
+                setMessages([
+                  {
+                    id: 'welcome',
+                    role: 'assistant',
+                    content: `Session reset. Ready for technical codebase questions.`,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  },
+                ]);
+              }}
+              className="text-xs h-8 text-txt-muted hover:text-txt-primary"
             >
               <Plus className="h-3.5 w-3.5 mr-1" />
               New Conversation
@@ -159,108 +176,119 @@ export default function AskCodebasePage() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 max-w-4xl mx-auto w-full">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 max-w-3xl ${
+                  msg.role === 'user' ? 'ml-auto justify-end' : ''
+                }`}
               >
                 {msg.role === 'assistant' && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-accent" />
+                  <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-white">
+                    <Bot className="h-4 w-4" />
                   </div>
                 )}
 
                 <div
-                  className={`rounded-xl p-4 max-w-2xl text-xs space-y-3 ${
+                  className={`space-y-3 rounded-xl p-4 text-xs leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-accent text-white ml-12'
-                      : 'bg-surface-primary border border-border text-txt-primary'
+                      ? 'bg-zinc-800 text-white border border-zinc-700 max-w-xl'
+                      : 'card bg-surface-primary max-w-2xl'
                   }`}
                 >
-                  <div className="leading-relaxed whitespace-pre-line font-sans">
+                  <div className="whitespace-pre-line text-txt-primary">
                     {msg.content}
                   </div>
 
-                  {/* Citations Box */}
+                  {/* Citations */}
                   {msg.citations && msg.citations.length > 0 && (
-                    <div className="pt-2 border-t border-border/50 space-y-1.5">
-                      <span className="text-[10px] font-mono uppercase text-txt-muted flex items-center gap-1">
-                        <FileCode2 className="h-3 w-3 text-accent" />
-                        Grounded Source Citations:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {msg.citations.map((cite, i) => (
+                    <div className="pt-3 border-t border-border space-y-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-txt-muted font-mono">
+                        Source Citations
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {msg.citations.map((cite, idx) => (
                           <Link
-                            key={i}
-                            href={`/workspace/${repository.id}/files?file=${encodeURIComponent(cite.file_path)}`}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-secondary border border-border text-[11px] font-mono text-accent hover:border-accent/40 transition-colors"
+                            key={idx}
+                            href={`/workspace/${repoId}/files?file=${encodeURIComponent(cite.file_path)}`}
+                            className="p-2 rounded bg-surface-secondary border border-border hover:border-zinc-500 transition-colors block text-left"
                           >
-                            <span>{cite.file_path}</span>
-                            <span className="text-txt-muted">L{cite.start_line}–{cite.end_line}</span>
+                            <div className="flex items-center gap-1.5 text-txt-primary font-mono text-[11px] truncate">
+                              <FileCode2 className="h-3 w-3 text-txt-muted flex-shrink-0" />
+                              <span className="truncate">{cite.file_path}</span>
+                            </div>
+                            <p className="text-[10px] text-txt-muted mt-0.5 font-mono">
+                              Lines {cite.start_line}–{cite.end_line}
+                            </p>
                           </Link>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-[10px] opacity-60 pt-1">
-                    <span>{msg.timestamp}</span>
-                    {msg.role === 'assistant' && (
+                  {msg.role === 'assistant' && (
+                    <div className="flex items-center justify-between pt-1 text-[10px] text-txt-muted">
+                      <span>{msg.timestamp}</span>
                       <button
                         onClick={() => handleCopy(msg.id, msg.content)}
-                        className="hover:opacity-100 transition-opacity flex items-center gap-1"
+                        className="hover:text-txt-primary flex items-center gap-1"
                       >
-                        {copiedId === msg.id ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
-                        {copiedId === msg.id ? 'Copied' : 'Copy'}
+                        {copiedId === msg.id ? (
+                          <>
+                            <Check className="h-3 w-3 text-status-success" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" />
+                            Copy
+                          </>
+                        )}
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {msg.role === 'user' && (
-                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-surface-tertiary flex items-center justify-center">
-                    <User className="h-4 w-4 text-txt-secondary" />
+                  <div className="w-7 h-7 rounded-lg bg-zinc-700 flex items-center justify-center flex-shrink-0 text-white">
+                    <User className="h-4 w-4" />
                   </div>
                 )}
               </div>
             ))}
 
             {loading && (
-              <div className="flex gap-3">
-                <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-accent animate-pulse" />
+              <div className="flex gap-3 max-w-3xl">
+                <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-white">
+                  <Bot className="h-4 w-4" />
                 </div>
-                <div className="rounded-xl p-3 bg-surface-primary border border-border text-xs text-txt-muted flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-accent animate-ping" />
-                  Retrieving vector chunks and formulating grounded answer...
+                <div className="card bg-surface-primary p-4 space-y-2 text-xs text-txt-secondary flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-txt-primary animate-pulse" />
+                  Searching code chunks and synthesizing response...
                 </div>
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Suggested Questions Pill bar */}
-          <div className="px-4 py-2 border-t border-border bg-surface-primary">
-            <div className="max-w-4xl mx-auto">
-              <p className="text-[10px] uppercase font-mono text-txt-muted mb-1.5 flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-accent" />
-                Suggested Verification Questions (Click to test):
-              </p>
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {DEMO_SUGGESTED_QUESTIONS.map((q, idx) => (
+          {/* Suggested Prompts */}
+          {messages.length <= 2 && (
+            <div className="px-4 pb-2">
+              <div className="flex flex-wrap gap-1.5 max-w-3xl mx-auto">
+                {suggestedQuestions.map((q, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSend(q)}
-                    disabled={loading}
-                    className="whitespace-nowrap px-2.5 py-1 rounded-full border border-border bg-surface-secondary text-[11px] text-txt-secondary hover:text-txt-primary hover:border-accent/40 transition-colors flex-shrink-0"
+                    className="text-[11px] bg-surface-primary hover:bg-surface-tertiary border border-border text-txt-secondary hover:text-txt-primary px-2.5 py-1 rounded-full transition-colors truncate max-w-xs"
                   >
                     {q}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Input Box */}
           <div className="p-4 border-t border-border bg-surface-primary">
@@ -269,83 +297,29 @@ export default function AskCodebasePage() {
                 e.preventDefault();
                 handleSend();
               }}
-              className="max-w-4xl mx-auto relative"
+              className="max-w-3xl mx-auto relative flex items-center gap-2"
             >
-              <textarea
+              <input
+                type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder="Ask anything about the codebase (e.g., How does the login flow work? Where are API routes defined?)"
-                rows={2}
-                className="w-full resize-none rounded-xl border border-border bg-surface-secondary px-3.5 py-2.5 pr-20 text-xs text-txt-primary placeholder:text-txt-muted focus:outline-none focus:border-accent font-sans"
+                placeholder="Ask about architecture, functions, entry points, or implementation logic..."
+                className="input-field pr-10 py-2.5 text-xs font-mono"
+                disabled={loading}
               />
-
-              <div className="absolute right-2.5 bottom-3.5 flex items-center gap-2">
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!input.trim() || loading}
-                  className="h-8 px-3 text-xs"
-                >
-                  <Send className="h-3.5 w-3.5 mr-1" />
-                  Send
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={!input.trim() || loading}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 px-3"
+              >
+                <Send className="h-3.5 w-3.5" />
+              </Button>
             </form>
-            <p className="text-[10px] text-center text-txt-muted mt-1.5">
-              Structura answers strictly according to indexed code. It will never fabricate functions or files.
-            </p>
           </div>
         </main>
       </div>
     </div>
   );
 }
-
-// Fallback generator for grounded local demonstration when Gemini API key is offline
-function generateOfflineRAGReply(query: string, repoName: string): ChatMessage {
-  const q = query.toLowerCase();
-
-  if (q.includes('auth') || q.includes('login') || q.includes('register')) {
-    return {
-      id: `assist-${Date.now()}`,
-      role: 'assistant',
-      content: `Authentication is handled through an Express Router mounted at \`/api/v1/auth\` and executed inside the \`AuthService\`.\n\n### Step-by-Step Flow:\n1. Incoming requests enter \`src/routes/auth.ts\` via \`/login\` and \`/signup\`.\n2. In \`src/services/auth-service.ts\`, passwords are salted and hashed using \`bcrypt.hash(password, 10)\`.\n3. User profiles are persisted to Supabase.\n4. When logging in, \`bcrypt.compare\` validates credentials and a signed JSON Web Token is issued.\n\nAll credentials remain strictly server-side.`,
-      citations: [
-        { file_path: 'src/routes/auth.ts', start_line: 19, end_line: 27 },
-        { file_path: 'src/services/auth-service.ts', start_line: 18, end_line: 32 },
-      ],
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-  }
-
-  if (q.includes('bootstrap') || q.includes('listen') || q.includes('start') || q.includes('http')) {
-    return {
-      id: `assist-${Date.now()}`,
-      role: 'assistant',
-      content: `The application bootstraps through \`src/index.ts\` which instantiates an HTTP server around the Express application:\n\n1. \`bootstrap()\` is invoked on startup in \`src/index.ts\`.\n2. \`createApp()\` in \`src/app.ts\` attaches CORS, JSON parsers, rate limiting, and route handlers.\n3. The server binds to \`config.port\` and logs readiness.`,
-      citations: [
-        { file_path: 'src/index.ts', start_line: 6, end_line: 14 },
-        { file_path: 'src/app.ts', start_line: 7, end_line: 25 },
-      ],
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-  }
-
-  return {
-    id: `assist-${Date.now()}`,
-    role: 'assistant',
-    content: `Based on the repository context for **${repoName}**, the architecture is organized into tiered modules:\n\n- **Entry Points**: \`src/index.ts\` and \`src/app.ts\` manage runtime listeners and middleware.\n- **API Endpoints**: Controllers in \`src/routes/\` parse client HTTP requests.\n- **Business Logic**: Services in \`src/services/\` coordinate analysis and database operations.\n\nLet me know if you would like me to cite specific functions in any of these modules!`,
-    citations: [
-      { file_path: 'src/index.ts', start_line: 1, end_line: 20 },
-      { file_path: 'src/app.ts', start_line: 1, end_line: 28 },
-    ],
-    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  };
-}
-

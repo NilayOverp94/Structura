@@ -13,27 +13,29 @@ import {
   GitBranch, 
   Calendar,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DEMO_REPOSITORY, DEMO_INSIGHTS } from '@/lib/demo-data';
 import { Repository, RepositoryInsights } from '@/types';
 
 export default function WorkspaceOverviewPage() {
   const params = useParams();
   const repoId = params.repositoryId as string;
 
-  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
-  const [insights, setInsights] = useState<RepositoryInsights>(DEMO_INSIGHTS);
+  const [repository, setRepository] = useState<Repository | null>(null);
+  const [insights, setInsights] = useState<RepositoryInsights | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
-      fetch(`/api/repositories/${repoId}/architecture`).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/repositories/${repoId}/architecture`).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, insightsData]) => {
         if (repoData?.repository) setRepository(repoData.repository);
@@ -41,7 +43,8 @@ export default function WorkspaceOverviewPage() {
       })
       .catch((err) => {
         console.warn('Could not load live repo workspace:', err);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [repoId]);
 
   return (
@@ -49,183 +52,189 @@ export default function WorkspaceOverviewPage() {
       <AppHeader />
 
       <div className="flex-1 flex">
-        <WorkspaceSidebar repository={repository} />
+        <WorkspaceSidebar repository={repository || ({ id: repoId, name: repoId, owner: '', full_name: repoId, github_url: '', stars: 0, forks: 0, default_branch: 'main', analysis_status: 'completed', created_at: '', updated_at: '' } as Repository)} />
 
         <main className="flex-1 p-6 md:p-8 space-y-8 overflow-y-auto max-w-5xl">
-          {/* Header */}
-          <div className="space-y-3 pb-6 border-b border-border">
-            <div className="flex items-center gap-2 text-xs font-mono text-txt-muted">
-              <span>{repository.owner}</span>
-              <span>/</span>
-              <span className="text-txt-primary">{repository.name}</span>
+          {loading ? (
+            <div className="card flex items-center justify-center py-20 text-txt-muted text-xs gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading repository intelligence...
             </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h1 className="text-2xl font-bold text-txt-primary">{repository.full_name}</h1>
-              <div className="flex items-center gap-2">
-                <Badge variant="info">{repository.primary_language || 'TypeScript'}</Badge>
-                <Badge variant="success">Analysis Complete</Badge>
-              </div>
-            </div>
-
-            <p className="text-sm text-txt-secondary leading-relaxed">
-              {repository.description}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4 text-xs text-txt-muted font-mono pt-2">
-              <span className="flex items-center gap-1.5">
-                <Star className="h-3.5 w-3.5 text-status-warning" />
-                {repository.stars.toLocaleString()} Stars
-              </span>
-              <span className="flex items-center gap-1.5">
-                <GitFork className="h-3.5 w-3.5" />
-                {repository.forks.toLocaleString()} Forks
-              </span>
-              <span className="flex items-center gap-1.5">
-                <GitBranch className="h-3.5 w-3.5" />
-                {repository.default_branch} branch
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                Indexed {new Date(repository.created_at).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-
-          {/* AI Repository Overview */}
-          <div className="card space-y-4">
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-accent" />
-              <h2 className="text-sm font-semibold text-txt-primary">Architecture & Purpose Overview</h2>
-            </div>
-            <p className="text-xs text-txt-secondary leading-relaxed whitespace-pre-line">
-              {insights.overview}
-            </p>
-          </div>
-
-          {/* Quick Access Modules */}
-          <div>
-            <h2 className="text-sm font-semibold text-txt-primary mb-4">Codebase Intelligence Tools</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Link
-                href={`/workspace/${repoId}/architecture`}
-                className="card-hover p-4 flex flex-col justify-between group"
-              >
-                <div>
-                  <Network className="h-5 w-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-sm font-semibold text-txt-primary">Interactive Architecture</h3>
-                  <p className="text-xs text-txt-secondary mt-1">
-                    Visual graph of components, entry points, and service boundaries.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center text-xs text-accent font-medium">
-                  Explore Diagram <ArrowRight className="h-3 w-3 ml-1" />
-                </div>
-              </Link>
-
-              <Link
-                href={`/workspace/${repoId}/files`}
-                className="card-hover p-4 flex flex-col justify-between group"
-              >
-                <div>
-                  <FileCode2 className="h-5 w-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-sm font-semibold text-txt-primary">File Intelligence</h3>
-                  <p className="text-xs text-txt-secondary mt-1">
-                    Tree viewer with beginner-friendly AI explanations for every file.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center text-xs text-accent font-medium">
-                  Browse Files <ArrowRight className="h-3 w-3 ml-1" />
-                </div>
-              </Link>
-
-              <Link
-                href={`/workspace/${repoId}/chat`}
-                className="card-hover p-4 flex flex-col justify-between group"
-              >
-                <div>
-                  <MessageSquare className="h-5 w-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-sm font-semibold text-txt-primary">Ask Your Codebase</h3>
-                  <p className="text-xs text-txt-secondary mt-1">
-                    RAG-powered conversational assistant with verifiable code citations.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center text-xs text-accent font-medium">
-                  Start Chat <ArrowRight className="h-3 w-3 ml-1" />
-                </div>
-              </Link>
-
-              <Link
-                href={`/workspace/${repoId}/dependencies`}
-                className="card-hover p-4 flex flex-col justify-between group"
-              >
-                <div>
-                  <GitFork className="h-5 w-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-sm font-semibold text-txt-primary">Dependency Map</h3>
-                  <p className="text-xs text-txt-secondary mt-1">
-                    Categorized breakdown of runtime dependencies, frameworks, and versions.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center text-xs text-accent font-medium">
-                  View Dependencies <ArrowRight className="h-3 w-3 ml-1" />
-                </div>
-              </Link>
-
-              <Link
-                href={`/workspace/${repoId}/roadmap`}
-                className="card-hover p-4 flex flex-col justify-between group"
-              >
-                <div>
-                  <Map className="h-5 w-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-sm font-semibold text-txt-primary">Contributor Roadmap</h3>
-                  <p className="text-xs text-txt-secondary mt-1">
-                    Step-by-step onboarding phases tailored for newcomer developers.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center text-xs text-accent font-medium">
-                  Follow Learning Path <ArrowRight className="h-3 w-3 ml-1" />
-                </div>
-              </Link>
-
-              <Link
-                href={`/workspace/${repoId}/issues`}
-                className="card-hover p-4 flex flex-col justify-between group"
-              >
-                <div>
-                  <Bug className="h-5 w-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                  <h3 className="text-sm font-semibold text-txt-primary">Bug & Feature Locator</h3>
-                  <p className="text-xs text-txt-secondary mt-1">
-                    Describe any feature or bug to find exact starting code locations.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center text-xs text-accent font-medium">
-                  Locate Code <ArrowRight className="h-3 w-3 ml-1" />
-                </div>
+          ) : !repository ? (
+            <div className="card text-center py-16 space-y-4">
+              <AlertCircle className="h-10 w-10 text-status-warning mx-auto" />
+              <h2 className="text-base font-semibold text-txt-primary">Repository Not Found</h2>
+              <p className="text-xs text-txt-secondary max-w-md mx-auto">
+                The repository requested has not been indexed or could not be found. You can submit a public repository from the dashboard.
+              </p>
+              <Link href="/dashboard">
+                <Button variant="primary" size="sm">
+                  Return to Dashboard
+                </Button>
               </Link>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="space-y-3 pb-6 border-b border-border">
+                <div className="flex items-center gap-2 text-xs font-mono text-txt-muted">
+                  <span>{repository.owner}</span>
+                  <span>/</span>
+                  <span className="text-txt-primary">{repository.name}</span>
+                </div>
 
-          {/* Detected Technologies */}
-          <div className="card space-y-4">
-            <h2 className="text-sm font-semibold text-txt-primary">Detected Technologies & Stack</h2>
-            <div className="flex flex-wrap gap-2">
-              {insights.detected_technologies.map((tech) => (
-                <div
-                  key={tech.name}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-surface-primary text-xs"
-                >
-                  <span className="font-medium text-txt-primary">{tech.name}</span>
-                  {tech.version && <span className="font-mono text-txt-muted">{tech.version}</span>}
-                  <span className="text-[10px] uppercase font-mono px-1 rounded bg-surface-tertiary text-txt-muted">
-                    {tech.category}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h1 className="text-2xl font-bold text-txt-primary">{repository.full_name}</h1>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">{repository.primary_language || 'Codebase'}</Badge>
+                    <Badge variant="success">Indexed</Badge>
+                  </div>
+                </div>
+
+                <p className="text-sm text-txt-secondary leading-relaxed">
+                  {repository.description || 'No description provided for this repository.'}
+                </p>
+
+                <div className="flex flex-wrap items-center gap-4 text-xs text-txt-muted font-mono pt-2">
+                  <span className="flex items-center gap-1.5">
+                    <Star className="h-3.5 w-3.5 text-status-warning" />
+                    {repository.stars?.toLocaleString() || 0} Stars
                   </span>
+                  <span className="flex items-center gap-1.5">
+                    <GitFork className="h-3.5 w-3.5" />
+                    {repository.forks?.toLocaleString() || 0} Forks
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <GitBranch className="h-3.5 w-3.5" />
+                    {repository.default_branch} branch
+                  </span>
+                  {repository.created_at && (
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      Indexed {new Date(repository.created_at).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+
+              {/* AI Repository Overview */}
+              {insights?.overview && (
+                <div className="card space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-txt-primary" />
+                    <h2 className="text-sm font-semibold text-txt-primary">Architecture & Purpose Overview</h2>
+                  </div>
+                  <p className="text-xs text-txt-secondary leading-relaxed whitespace-pre-line">
+                    {insights.overview}
+                  </p>
+                </div>
+              )}
+
+              {/* Quick Access Tools */}
+              <div>
+                <h2 className="text-sm font-semibold text-txt-primary mb-4">Codebase Intelligence Tools</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Link
+                    href={`/workspace/${repoId}/architecture`}
+                    className="card-hover p-4 flex flex-col justify-between group"
+                  >
+                    <div>
+                      <Network className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
+                      <h3 className="text-sm font-semibold text-txt-primary">Interactive Architecture</h3>
+                      <p className="text-xs text-txt-secondary mt-1">
+                        Visual graph of modules, entry points, and boundaries.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
+                      Explore Diagram <ArrowRight className="h-3 w-3 ml-1" />
+                    </div>
+                  </Link>
+
+                  <Link
+                    href={`/workspace/${repoId}/files`}
+                    className="card-hover p-4 flex flex-col justify-between group"
+                  >
+                    <div>
+                      <FileCode2 className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
+                      <h3 className="text-sm font-semibold text-txt-primary">File Explorer</h3>
+                      <p className="text-xs text-txt-secondary mt-1">
+                        Source tree viewer with grounded AI explanations for each file.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
+                      Browse Files <ArrowRight className="h-3 w-3 ml-1" />
+                    </div>
+                  </Link>
+
+                  <Link
+                    href={`/workspace/${repoId}/chat`}
+                    className="card-hover p-4 flex flex-col justify-between group"
+                  >
+                    <div>
+                      <MessageSquare className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
+                      <h3 className="text-sm font-semibold text-txt-primary">Ask Your Codebase</h3>
+                      <p className="text-xs text-txt-secondary mt-1">
+                        RAG-powered conversational assistant with verifiable code citations.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
+                      Open Assistant <ArrowRight className="h-3 w-3 ml-1" />
+                    </div>
+                  </Link>
+
+                  <Link
+                    href={`/workspace/${repoId}/dependencies`}
+                    className="card-hover p-4 flex flex-col justify-between group"
+                  >
+                    <div>
+                      <GitFork className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
+                      <h3 className="text-sm font-semibold text-txt-primary">Dependencies</h3>
+                      <p className="text-xs text-txt-secondary mt-1">
+                        Production and development packages extracted from manifests.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
+                      View Dependencies <ArrowRight className="h-3 w-3 ml-1" />
+                    </div>
+                  </Link>
+
+                  <Link
+                    href={`/workspace/${repoId}/roadmap`}
+                    className="card-hover p-4 flex flex-col justify-between group"
+                  >
+                    <div>
+                      <Map className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
+                      <h3 className="text-sm font-semibold text-txt-primary">Contributor Roadmap</h3>
+                      <p className="text-xs text-txt-secondary mt-1">
+                        Structured step-by-step onboarding plan for contributors.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
+                      View Roadmap <ArrowRight className="h-3 w-3 ml-1" />
+                    </div>
+                  </Link>
+
+                  <Link
+                    href={`/workspace/${repoId}/issues`}
+                    className="card-hover p-4 flex flex-col justify-between group"
+                  >
+                    <div>
+                      <Bug className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
+                      <h3 className="text-sm font-semibold text-txt-primary">Feature & Bug Locator</h3>
+                      <p className="text-xs text-txt-secondary mt-1">
+                        Find exact files and functions to modify for new features or bugfixes.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
+                      Locate Code <ArrowRight className="h-3 w-3 ml-1" />
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>
   );
 }
-

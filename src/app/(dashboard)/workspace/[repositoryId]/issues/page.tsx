@@ -7,33 +7,30 @@ import {
   Bug, 
   Search, 
   FileCode2, 
-  Sparkles, 
   ArrowRight, 
-  CheckCircle2, 
-  HelpCircle,
-  AlertCircle,
-  Lightbulb
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DEMO_REPOSITORY, DEMO_LOCATE_EXAMPLES } from '@/lib/demo-data';
 import { LocateResult, Repository } from '@/types';
 
 export default function BugFeatureLocatorPage() {
   const params = useParams();
-  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+  const repoId = (params?.repositoryId as string) || '';
 
-  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
+  const [repository, setRepository] = useState<Repository | null>(null);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<LocateResult[]>(DEMO_LOCATE_EXAMPLES[0].results);
-  const [summary, setSummary] = useState<string>(DEMO_LOCATE_EXAMPLES[0].summary);
+  const [results, setResults] = useState<LocateResult[]>([]);
+  const [summary, setSummary] = useState<string>('');
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     fetch(`/api/repositories/${repoId}`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.repository) setRepository(data.repository);
       })
@@ -41,10 +38,10 @@ export default function BugFeatureLocatorPage() {
   }, [repoId]);
 
   const sampleQueries = [
-    'Where is user authentication and password validation handled?',
-    'I want to add rate limiting or CORS configuration',
+    'Where is user authentication and session verification handled?',
     'Where are API endpoints for repository analysis defined?',
     'How do I add a new database table or schema migration?',
+    'Where are HTTP middleware and request headers configured?',
   ];
 
   const handleSearch = async (textToSearch?: string) => {
@@ -52,6 +49,8 @@ export default function BugFeatureLocatorPage() {
     if (!q.trim() || loading) return;
 
     setLoading(true);
+    setHasSearched(true);
+    if (textToSearch) setQuery(textToSearch);
 
     try {
       const response = await fetch(`/api/repositories/${repoId}/locate`, {
@@ -66,13 +65,8 @@ export default function BugFeatureLocatorPage() {
       setResults(data.results || []);
       setSummary(data.summary || '');
     } catch {
-      // Grounded fallback
-      const matchingExample = DEMO_LOCATE_EXAMPLES.find(e => 
-        e.query.toLowerCase().includes(q.toLowerCase().slice(0, 10))
-      ) || DEMO_LOCATE_EXAMPLES[0];
-
-      setResults(matchingExample.results);
-      setSummary(matchingExample.summary);
+      setResults([]);
+      setSummary('No matching source code locations could be found for this description.');
     } finally {
       setLoading(false);
     }
@@ -83,166 +77,155 @@ export default function BugFeatureLocatorPage() {
       <AppHeader />
 
       <div className="flex-1 flex overflow-hidden">
-        <WorkspaceSidebar repository={repository} />
+        <WorkspaceSidebar repository={repository || ({ id: repoId, name: repoId, owner: '', full_name: repoId, github_url: '', stars: 0, forks: 0, default_branch: 'main', analysis_status: 'completed', created_at: '', updated_at: '' } as Repository)} />
 
         <main className="flex-1 p-6 md:p-8 space-y-6 overflow-y-auto max-w-4xl">
-          <div>
+          {/* Header */}
+          <div className="space-y-2 pb-6 border-b border-border">
             <div className="flex items-center gap-2">
-              <Bug className="h-5 w-5 text-accent" />
+              <Bug className="h-5 w-5 text-txt-primary" />
               <h1 className="text-xl font-bold text-txt-primary">Bug & Feature Locator</h1>
             </div>
-            <p className="text-xs text-txt-secondary mt-1">
-              Describe a feature you want to build or a bug you need to trace. Structura performs hybrid vector search to pinpoint the relevant starting files.
+            <p className="text-xs text-txt-secondary leading-relaxed">
+              Describe a feature you want to add or a bug you need to trace. Structura ranks the exact source files and line ranges where changes should be made.
             </p>
           </div>
 
-          {/* Search Box */}
-          <div className="card space-y-3">
+          {/* Search Form */}
+          <div className="card space-y-4">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSearch();
               }}
-              className="space-y-3"
+              className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-2"
             >
-              <div className="relative">
+              <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-txt-muted" />
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Describe what you want to implement or investigate (e.g. Where is user login handled?)"
-                  className="input-field pl-10 text-xs py-3"
+                  placeholder="e.g., Where are user sessions and cookies authenticated?"
+                  className="input-field pl-10 text-xs font-mono"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-mono text-txt-muted uppercase">Try query:</span>
-                  {sampleQueries.map((sq, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        setQuery(sq);
-                        handleSearch(sq);
-                      }}
-                      className="text-[11px] text-txt-secondary hover:text-accent bg-surface-primary px-2.5 py-1 rounded border border-border transition-colors truncate max-w-[280px]"
-                    >
-                      {sq}
-                    </button>
-                  ))}
-                </div>
-
-                <Button type="submit" variant="primary" loading={loading} className="text-xs">
-                  <Sparkles className="h-3.5 w-3.5 mr-1" />
-                  Locate Relevant Code
-                </Button>
-              </div>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                disabled={!query.trim() || loading}
+                className="flex-shrink-0"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Locate Code
+              </Button>
             </form>
+
+            {/* Sample Queries */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] text-txt-muted">Suggestions:</span>
+              {sampleQueries.map((sample, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSearch(sample)}
+                  className="text-[11px] bg-surface-primary hover:bg-surface-tertiary border border-border text-txt-secondary hover:text-txt-primary px-2.5 py-1 rounded-full transition-colors"
+                >
+                  {sample}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* AI Analysis Summary */}
-          {summary && (
-            <div className="p-4 rounded-xl border border-accent/20 bg-accent/5 space-y-2">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="h-4 w-4 text-accent" />
-                <h3 className="text-xs font-semibold uppercase font-mono text-accent">
-                  Architectural Synthesis
-                </h3>
-              </div>
-              <p className="text-xs text-txt-primary leading-relaxed">
-                {summary}
-              </p>
+          {/* Results Area */}
+          {loading && (
+            <div className="card flex items-center justify-center py-16 text-txt-muted text-xs gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Scanning AST indexes and locating relevant components...
             </div>
           )}
 
-          {/* Ranked Results List */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-txt-primary">
-                Ranked Target Files ({results.length})
-              </h2>
-              <span className="text-[10px] text-txt-muted font-mono">Sorted by inspection order</span>
-            </div>
-
-            {results.map((item, index) => (
-              <div
-                key={item.file_path}
-                className="card space-y-3 border-border hover:border-border-light transition-colors"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-surface-tertiary flex items-center justify-center font-mono text-[11px] text-txt-muted">
-                      {item.suggested_order || index + 1}
-                    </span>
-                    <Link
-                      href={`/workspace/${repository.id}/files?file=${encodeURIComponent(item.file_path)}`}
-                      className="font-mono text-xs font-semibold text-accent hover:underline flex items-center gap-1.5"
-                    >
-                      <FileCode2 className="h-3.5 w-3.5" />
-                      {item.file_path}
-                    </Link>
+          {!loading && hasSearched && (
+            <div className="space-y-4">
+              {summary && (
+                <div className="card p-4 space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-txt-primary">
+                    <Sparkles className="h-4 w-4 text-txt-primary" />
+                    AI Implementation Context
                   </div>
-
-                  <Badge
-                    variant={
-                      item.relevance === 'directly_relevant'
-                        ? 'success'
-                        : item.relevance === 'related'
-                        ? 'info'
-                        : 'default'
-                    }
-                    className="text-[10px] uppercase font-mono"
-                  >
-                    {item.relevance.replace('_', ' ')}
-                  </Badge>
+                  <p className="text-xs text-txt-secondary leading-relaxed">
+                    {summary}
+                  </p>
                 </div>
+              )}
 
-                <p className="text-xs text-txt-secondary leading-relaxed">
-                  {item.why_relevant}
-                </p>
+              {results.length === 0 ? (
+                <div className="card text-center py-12 text-xs text-txt-muted">
+                  No code files found matching your query description.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-txt-muted font-mono">
+                    Ranked Relevant Files ({results.length})
+                  </h2>
 
-                {item.important_functions && item.important_functions.length > 0 && (
-                  <div>
-                    <span className="text-[10px] uppercase font-mono text-txt-muted">Important Functions to Inspect:</span>
-                    <div className="flex flex-wrap gap-1.5 mt-1 font-mono text-[11px]">
-                      {item.important_functions.map((fn, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded bg-surface-primary border border-border text-txt-primary">
-                          {fn}
-                        </span>
-                      ))}
+                  {results.map((res, idx) => (
+                    <div key={idx} className="card p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2 truncate">
+                          <FileCode2 className="h-4 w-4 text-txt-muted flex-shrink-0" />
+                          <span className="text-xs font-mono font-semibold text-txt-primary truncate">
+                            {res.file_path}
+                          </span>
+                        </div>
+
+                        <Badge
+                          variant={res.relevance === 'directly_relevant' ? 'default' : 'info'}
+                          className="text-[10px] uppercase font-mono capitalize"
+                        >
+                          {res.relevance.replace('_', ' ')}
+                        </Badge>
+                      </div>
+
+                      <p className="text-xs text-txt-secondary leading-relaxed">
+                        {res.why_relevant}
+                      </p>
+
+                      {res.code_snippet && (
+                        <div className="text-[11px] font-mono text-txt-muted bg-surface-primary p-2.5 rounded border border-border overflow-x-auto whitespace-pre">
+                          {res.code_snippet}
+                        </div>
+                      )}
+
+                      {res.important_functions && res.important_functions.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[10px] text-txt-muted font-mono">Functions:</span>
+                          {res.important_functions.map((fn) => (
+                            <span key={fn} className="text-[10px] font-mono bg-surface-primary px-1.5 py-0.5 rounded border border-border text-txt-secondary">
+                              {fn}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t border-border flex justify-end">
+                        <Link
+                          href={`/workspace/${repoId}/files?file=${encodeURIComponent(res.file_path)}`}
+                          className="inline-flex items-center gap-1 text-xs text-txt-primary hover:underline font-medium"
+                        >
+                          Open in File Explorer
+                          <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {item.code_snippet && (
-                  <div className="pt-2">
-                    <span className="text-[10px] uppercase font-mono text-txt-muted">Supporting Evidence Snippet:</span>
-                    <pre className="mt-1 p-2.5 rounded bg-[#0E1015] border border-border font-mono text-[11px] text-txt-primary overflow-x-auto">
-                      {item.code_snippet}
-                    </pre>
-                  </div>
-                )}
-
-                <div className="pt-2 border-t border-border flex items-center justify-between text-xs">
-                  <span className="text-[11px] text-txt-muted">
-                    {item.related_modules?.length ? `Related: ${item.related_modules.join(', ')}` : 'Independent module'}
-                  </span>
-                  <Link
-                    href={`/workspace/${repository.id}/files?file=${encodeURIComponent(item.file_path)}`}
-                    className="text-accent hover:underline inline-flex items-center gap-1 text-[11px] font-medium"
-                  >
-                    Open in File Explorer
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
+                  ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
         </main>
       </div>
     </div>
   );
 }
-

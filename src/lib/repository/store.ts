@@ -1,7 +1,11 @@
-import { Repository, RepositoryFile, RepositoryInsights, SearchResult, CodeChunk } from '@/types';
-import { DEMO_REPOSITORY, DEMO_FILES, DEMO_INSIGHTS, DEMO_ROADMAP, DEMO_DEPENDENCIES } from '@/lib/demo-data';
+import { Repository, RepositoryFile, RepositoryInsights, CodeChunk } from '@/types';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { githubClient } from '@/lib/github/client';
+import { filterRepositoryFiles, detectLanguage, prioritizeFiles } from '@/lib/github/filter';
+import { detectTechnologies } from '@/lib/analysis/technology-detector';
+import { chunkFileContent } from '@/lib/analysis/chunker';
+import { generateJSON, hasGeminiKey } from '@/lib/gemini/client';
+import { ARCHITECTURE_PROMPT } from '@/lib/rag/prompts';
 
 interface CachedRepositoryData {
   repository: Repository;
@@ -20,14 +24,6 @@ if (!globalCache.__STRUCTURA_REPO_CACHE__) {
 }
 
 const repoCache = globalCache.__STRUCTURA_REPO_CACHE__;
-
-// Seed demo repository
-repoCache.set('demo-codecompass-repo', {
-  repository: DEMO_REPOSITORY,
-  files: DEMO_FILES,
-  insights: DEMO_INSIGHTS,
-  chunks: [],
-});
 
 export class RepositoryStore {
   /**
@@ -80,28 +76,29 @@ export class RepositoryStore {
   }
 
   /**
-   * Auto-recover or synthesize repository data when not cached or cold-started on serverless
+   * Auto-recover repository data when requested on cold-started serverless instances
    */
-  static async recoverOrSynthesize(id: string): Promise<CachedRepositoryData> {
-    let owner = 'repository';
-    let repoName = 'project';
+  static async recoverOrSynthesize(id: string): Promise<CachedRepositoryData | null> {
+    let owner = '';
+    let repoName = '';
     const match = id.match(/^repo-([^-]+)-(.+)$/i);
-    if (match) {
-      owner = match[1];
-      repoName = match[2];
-    }
+    if (!match) return null;
+
+    owner = match[1];
+    repoName = match[2];
 
     let meta = null;
     try {
       meta = await githubClient.getRepository(owner, repoName);
     } catch (e) {
-      console.warn(`Live metadata fallback for ${owner}/${repoName}:`, e);
+      console.warn(`Could not resolve GitHub repository ${owner}/${repoName}:`, e);
+      return null;
     }
 
-    const full_name = meta ? meta.full_name : `${owner}/${repoName}`;
-    const name = meta ? meta.name : repoName;
-    const repoOwner = meta ? meta.owner : owner;
-    const lang = meta?.language || 'TypeScript';
+    const full_name = meta.full_name;
+    const name = meta.name;
+    const repoOwner = meta.owner;
+    const lang = meta.language || 'TypeScript';
 
     const repoRecord: Repository = {
       id,
@@ -109,37 +106,114 @@ export class RepositoryStore {
       owner: repoOwner,
       name,
       full_name,
-      github_url: meta ? meta.html_url : `https://github.com/${owner}/${repoName}`,
-      description: meta?.description || `${full_name} is an open-source codebase indexed with Structura AI.`,
-      default_branch: meta?.default_branch || 'main',
+      github_url: meta.html_url,
+      description: meta.description || `${full_name} is an open-source codebase indexed with Structura AI.`,
+      default_branch: meta.default_branch || 'main',
       primary_language: lang,
-      stars: meta ? meta.stars : 142,
-      forks: meta ? meta.forks : 38,
-      open_issues: meta?.open_issues || 0,
+      stars: meta.stars,
+      forks: meta.forks,
+      open_issues: meta.open_issues || 0,
       indexed_commit_sha: null,
       analysis_status: 'completed',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const files: RepositoryFile[] = DEMO_FILES.map((f, idx) => ({
-      ...f,
-      id: `f-${id}-${idx}`,
-      repository_id: id,
-    }));
+    // Fetch repository files from GitHub
+    let fetchedFiles: RepositoryFile[] = [];
+    try {
+      const rawTree = await githubClient.getTree(owner, repoName, meta.default_branch);
+      const filteredTree = filterRepositoryFiles(rawTree);
+      const prioritized = prioritizeFiles(filteredTree).slice(0, 25);
+
+      for (let i = 0; i < prioritized.length; i++) {
+        const item = prioritized[i];
+        try {
+          const content = await githubClient.getFileContent(owner, repoName, item.path, meta.default_branch);
+          fetchedFiles.push({
+            id: `f-${id}-${i}`,
+            repository_id: id,
+            file_path: item.path,
+            language: detectLanguage(item.path),
+            file_size: item.size || content.length,
+            content,
+            blob_sha: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        } catch {
+          // Skip unreadable
+        }
+      }
+    } catch (err) {
+      console.warn('Live tree fetch error in recovery:', err);
+    }
+
+    const detectedTech = detectTechnologies(fetchedFiles.map(f => ({ path: f.file_path, content: f.content })));
+
+    let overview = `${full_name} is an open-source project written primarily in ${lang}.`;
+    let architectureLayers: RepositoryInsights['architecture']['layers'] = [
+      {
+        name: 'Entry & Core Logic',
+        description: 'Primary application structure and source files.',
+        category: 'backend',
+        files: fetchedFiles.slice(0, 5).map(f => f.file_path),
+      },
+    ];
+
+    if (hasGeminiKey() && fetchedFiles.length > 0) {
+      try {
+        const summaryFiles = fetchedFiles.slice(0, 6).map(f => `File: ${f.file_path}\n${f.content.slice(0, 400)}`).join('\n\n');
+        const prompt = `Repository: ${full_name}\nDescription: ${meta.description || ''}\n\nFiles:\n${summaryFiles}`;
+        const aiInsights = await generateJSON<any>(prompt, ARCHITECTURE_PROMPT);
+        if (aiInsights?.architecture?.layers) {
+          architectureLayers = aiInsights.architecture.layers;
+        }
+        if (aiInsights?.overview) {
+          overview = aiInsights.overview;
+        }
+      } catch (e) {
+        console.warn('Gemini architecture recovery fallback:', e);
+      }
+    }
 
     const insights: RepositoryInsights = {
-      ...DEMO_INSIGHTS,
       id: `insights-${id}`,
       repository_id: id,
-      overview: `${full_name} is an active open-source project written primarily in ${lang}. It features modular architecture with clean separation between controllers, services, database models, and utilities.`,
+      overview,
+      architecture: {
+        description: `Architecture of ${full_name}`,
+        entry_points: fetchedFiles.slice(0, 3).map(f => f.file_path),
+        layers: architectureLayers,
+      },
+      detected_technologies: detectedTech,
+      generated_at: new Date().toISOString(),
     };
+
+    const chunks: CodeChunk[] = [];
+    fetchedFiles.forEach((file, fIdx) => {
+      const c = chunkFileContent(file.content, file.file_path, file.language);
+      c.forEach((chunk, cIdx) => {
+        chunks.push({
+          id: `chunk-${file.id}-${cIdx}`,
+          repository_id: id,
+          file_id: file.id,
+          chunk_index: cIdx,
+          content: chunk.content,
+          start_line: chunk.startLine,
+          end_line: chunk.endLine,
+          embedding: null,
+          metadata: { file_path: file.file_path, language: file.language },
+          created_at: new Date().toISOString(),
+        });
+      });
+    });
 
     const cachedData: CachedRepositoryData = {
       repository: repoRecord,
-      files,
+      files: fetchedFiles,
       insights,
-      chunks: [],
+      chunks,
     };
 
     repoCache.set(id, cachedData);
@@ -153,10 +227,6 @@ export class RepositoryStore {
    * Get repository metadata by ID
    */
   static async getRepository(id: string): Promise<Repository | null> {
-    if (id === 'demo-codecompass-repo' || id === 'demo') {
-      return DEMO_REPOSITORY;
-    }
-
     // Check in-memory store
     const cached = repoCache.get(id) || repoCache.get(id.toLowerCase());
     if (cached) return cached.repository;
@@ -175,23 +245,19 @@ export class RepositoryStore {
       // Fallback
     }
 
-    // Auto-recover if ID matches repository pattern
+    // Auto-recover from GitHub if ID matches repository pattern
     if (id.startsWith('repo-')) {
       const recovered = await this.recoverOrSynthesize(id);
-      return recovered.repository;
+      if (recovered) return recovered.repository;
     }
 
-    return DEMO_REPOSITORY;
+    return null;
   }
 
   /**
    * Get files for a repository
    */
   static async getFiles(id: string): Promise<RepositoryFile[]> {
-    if (id === 'demo-codecompass-repo') {
-      return DEMO_FILES;
-    }
-
     const cached = repoCache.get(id) || repoCache.get(id.toLowerCase());
     if (cached && cached.files && cached.files.length > 0) return cached.files;
 
@@ -210,10 +276,10 @@ export class RepositoryStore {
 
     if (id.startsWith('repo-')) {
       const recovered = await this.recoverOrSynthesize(id);
-      return recovered.files;
+      if (recovered) return recovered.files;
     }
 
-    return DEMO_FILES;
+    return [];
   }
 
   /**
@@ -227,11 +293,7 @@ export class RepositoryStore {
   /**
    * Get insights and architecture for a repository
    */
-  static async getInsights(id: string): Promise<RepositoryInsights> {
-    if (id === 'demo-codecompass-repo') {
-      return DEMO_INSIGHTS;
-    }
-
+  static async getInsights(id: string): Promise<RepositoryInsights | null> {
     const cached = repoCache.get(id) || repoCache.get(id.toLowerCase());
     if (cached && cached.insights) return cached.insights;
 
@@ -251,17 +313,17 @@ export class RepositoryStore {
 
     if (id.startsWith('repo-')) {
       const recovered = await this.recoverOrSynthesize(id);
-      return recovered.insights;
+      if (recovered) return recovered.insights;
     }
 
-    return DEMO_INSIGHTS;
+    return null;
   }
 
   /**
    * List all known repositories
    */
   static async listRepositories(): Promise<Repository[]> {
-    const list: Repository[] = [DEMO_REPOSITORY];
+    const list: Repository[] = [];
 
     // From memory
     for (const [_, data] of repoCache.entries()) {

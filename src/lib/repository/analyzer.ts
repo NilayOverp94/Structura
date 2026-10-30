@@ -14,7 +14,6 @@ import {
   AnalysisStatus,
   CodeChunk
 } from '@/types';
-import { DEMO_REPOSITORY, DEMO_FILES, DEMO_INSIGHTS, DEMO_ROADMAP } from '@/lib/demo-data';
 
 export interface ProgressCallback {
   (stage: string, progress: number, message?: string): void;

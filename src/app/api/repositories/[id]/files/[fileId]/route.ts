@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { RepositoryStore } from '@/lib/repository/store';
-import { DEMO_FILES } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +11,11 @@ export async function GET(
     const { id, fileId } = params;
     const file = await RepositoryStore.getFile(id, fileId);
 
-    if (file) {
-      return NextResponse.json({ file });
+    if (!file) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ file: DEMO_FILES[0] });
+    return NextResponse.json({ file });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

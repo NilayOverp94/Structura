@@ -4,48 +4,41 @@ import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams, useParams } from 'next/navigation';
 import { 
   FileCode2, 
-  Folder, 
-  FolderOpen, 
   Search, 
   Sparkles, 
   Copy, 
   Check, 
-  ChevronRight, 
-  ChevronDown,
-  Info,
-  Layers,
-  Code
+  Layers, 
+  Code,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DEMO_REPOSITORY, DEMO_FILES } from '@/lib/demo-data';
 import { formatFileSize, cn } from '@/lib/utils';
 import { Repository, RepositoryFile } from '@/types';
 
 function FileExplorerContent() {
   const params = useParams();
-  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+  const repoId = (params?.repositoryId as string) || '';
   const searchParams = useSearchParams();
   const fileQuery = searchParams.get('file');
 
-  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
-  const [files, setFiles] = useState<RepositoryFile[]>(DEMO_FILES);
-
-  const [selectedFile, setSelectedFile] = useState<RepositoryFile>(
-    DEMO_FILES.find((f) => f.file_path === fileQuery) || DEMO_FILES[0]
-  );
+  const [repository, setRepository] = useState<Repository | null>(null);
+  const [files, setFiles] = useState<RepositoryFile[]>([]);
+  const [selectedFile, setSelectedFile] = useState<RepositoryFile | null>(null);
   const [search, setSearch] = useState('');
   const [copied, setCopied] = useState(false);
   const [explaining, setExplaining] = useState(false);
-  const [selectedCode, setSelectedCode] = useState('');
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
-      fetch(`/api/repositories/${repoId}/files`).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/repositories/${repoId}/files`).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, filesData]) => {
         if (repoData?.repository) setRepository(repoData.repository);
@@ -59,7 +52,8 @@ function FileExplorerContent() {
       })
       .catch((err) => {
         console.warn('Could not fetch workspace files:', err);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [repoId, fileQuery]);
 
   const filteredFiles = useMemo(() => {
@@ -68,15 +62,17 @@ function FileExplorerContent() {
   }, [files, search]);
 
   const handleCopyCode = () => {
+    if (!selectedFile) return;
     navigator.clipboard.writeText(selectedFile.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleExplainFile = async () => {
+    if (!selectedFile) return;
     setExplaining(true);
     try {
-      const activeId = repoId || repository.id;
+      const activeId = repoId || repository?.id;
       const res = await fetch(`/api/repositories/${activeId}/explain`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,21 +82,21 @@ function FileExplorerContent() {
       setAiExplanation(data.explanation || 'Detailed AI explanation generated based on file AST structure.');
     } catch {
       setAiExplanation(
-        `This file (${selectedFile.file_path}) defines essential logic for ${selectedFile.language || 'code'} execution. It is structured into exportable functions and imported into core service pipelines.`
+        `This file (${selectedFile.file_path}) defines essential logic for ${selectedFile.language || 'code'} execution.`
       );
     } finally {
       setExplaining(false);
     }
   };
 
-  const lines = selectedFile.content.split('\n');
+  const lines = selectedFile?.content ? selectedFile.content.split('\n') : [];
 
   return (
     <div className="min-h-screen bg-surface-primary flex flex-col">
       <AppHeader />
 
       <div className="flex-1 flex overflow-hidden">
-        <WorkspaceSidebar repository={repository} />
+        <WorkspaceSidebar repository={repository || ({ id: repoId, name: repoId, owner: '', full_name: repoId, github_url: '', stars: 0, forks: 0, default_branch: 'main', analysis_status: 'completed', created_at: '', updated_at: '' } as Repository)} />
 
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-[calc(100vh-3.5rem)]">
           {/* File Tree Sidebar */}
@@ -118,148 +114,130 @@ function FileExplorerContent() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-0.5 font-mono text-xs">
-              {filteredFiles.map((f) => {
-                const isSelected = selectedFile.id === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => {
-                      setSelectedFile(f);
-                      setAiExplanation(null);
-                    }}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left transition-colors truncate',
-                      isSelected
-                        ? 'bg-accent/10 text-accent font-medium border border-accent/20'
-                        : 'text-txt-secondary hover:bg-surface-secondary hover:text-txt-primary'
-                    )}
-                  >
-                    <FileCode2 className={cn('h-3.5 w-3.5 flex-shrink-0', isSelected ? 'text-accent' : 'text-txt-muted')} />
-                    <span className="truncate">{f.file_path}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="p-3 border-t border-border text-[11px] text-txt-muted flex justify-between">
-              <span>{filteredFiles.length} files indexed</span>
-              <span>{formatFileSize(files.reduce((a, b) => a + b.file_size, 0))}</span>
+            <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+              {loading ? (
+                <div className="py-10 text-center text-xs text-txt-muted flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading files...
+                </div>
+              ) : filteredFiles.length === 0 ? (
+                <p className="p-4 text-xs text-txt-muted text-center">No files found.</p>
+              ) : (
+                filteredFiles.map((file) => {
+                  const isSelected = selectedFile?.file_path === file.file_path;
+                  return (
+                    <button
+                      key={file.id}
+                      onClick={() => {
+                        setSelectedFile(file);
+                        setAiExplanation(null);
+                      }}
+                      className={cn(
+                        'w-full text-left px-2.5 py-1.5 rounded text-xs font-mono flex items-center justify-between transition-colors',
+                        isSelected
+                          ? 'bg-zinc-800 text-white font-medium border border-zinc-700'
+                          : 'text-txt-secondary hover:bg-surface-secondary hover:text-txt-primary'
+                      )}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <FileCode2 className="h-3.5 w-3.5 text-txt-muted flex-shrink-0" />
+                        <span className="truncate">{file.file_path}</span>
+                      </div>
+                      <span className="text-[10px] text-txt-muted ml-1 flex-shrink-0">
+                        {formatFileSize(file.file_size)}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
 
-          {/* Main Code & AI Explanation View */}
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-surface-secondary">
-            {/* Code Viewer Panel */}
-            <div className="flex-1 flex flex-col border-r border-border overflow-hidden">
-              {/* File Breadcrumb & Action bar */}
-              <div className="h-12 border-b border-border bg-surface-primary px-4 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-mono">
-                  <span className="text-txt-muted">{repository.name}</span>
-                  <span className="text-txt-muted">/</span>
-                  <span className="text-txt-primary font-medium">{selectedFile.file_path}</span>
-                  <Badge variant="default" className="text-[10px] ml-2">
-                    {selectedFile.language || 'Text'}
-                  </Badge>
-                  <span className="text-[11px] text-txt-muted">
-                    {formatFileSize(selectedFile.file_size)} • {lines.length} lines
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCopyCode}
-                    className="text-xs h-7 px-2"
-                  >
-                    {copied ? <Check className="h-3.5 w-3.5 text-status-success mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-                    {copied ? 'Copied' : 'Copy'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={handleExplainFile}
-                    loading={explaining}
-                    className="text-xs h-7 px-2.5"
-                  >
-                    <Sparkles className="h-3.5 w-3.5 mr-1" />
-                    Explain File
-                  </Button>
-                </div>
-              </div>
-
-              {/* Source Code with Line Numbers */}
-              <div className="flex-1 overflow-auto bg-[#0E1015] p-4 font-mono text-xs leading-relaxed text-txt-primary">
-                <table className="w-full border-collapse">
-                  <tbody>
-                    {lines.map((line, idx) => (
-                      <tr key={idx} className="hover:bg-surface-tertiary/40">
-                        <td className="w-10 pr-4 text-right text-txt-muted select-none opacity-40 font-mono text-[11px]">
-                          {idx + 1}
-                        </td>
-                        <td className="whitespace-pre overflow-x-auto text-txt-primary">
-                          {line || ' '}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* AI Explanation Side Panel */}
-            <div className="w-full md:w-80 border-t md:border-t-0 bg-surface-primary flex flex-col overflow-y-auto p-4 space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-border">
-                <Sparkles className="h-4 w-4 text-accent" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-txt-primary">
-                  AI File Intelligence
-                </h3>
-              </div>
-
-              <div className="space-y-4 text-xs">
-                <div>
-                  <h4 className="text-[11px] font-semibold text-txt-muted uppercase font-mono">Role in Project</h4>
-                  <p className="mt-1 text-txt-secondary leading-relaxed">
-                    {selectedFile.file_path.includes('routes')
-                      ? 'Handles HTTP endpoints, parses incoming client parameters, and dispatches to business services.'
-                      : selectedFile.file_path.includes('service')
-                      ? 'Contains domain-level business workflows, external API integrations, and database interactions.'
-                      : selectedFile.file_path.includes('index') || selectedFile.file_path.includes('app')
-                      ? 'Initial bootstrap file responsible for registering application middleware and binding runtime listeners.'
-                      : 'Configuration manifest defining dependencies and scripts.'}
-                  </p>
-                </div>
-
-                {aiExplanation ? (
-                  <div className="p-3 rounded-lg border border-accent/20 bg-accent/5 space-y-2">
-                    <span className="text-[10px] font-mono uppercase text-accent font-semibold">Generated Insight</span>
-                    <p className="text-txt-primary leading-relaxed whitespace-pre-line text-xs">
-                      {aiExplanation}
-                    </p>
+          {/* Main Viewer & Code Content */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-surface-secondary">
+            {selectedFile ? (
+              <>
+                {/* File Header */}
+                <div className="h-12 border-b border-border bg-surface-primary px-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileCode2 className="h-4 w-4 text-txt-primary" />
+                    <span className="text-xs font-mono font-medium text-txt-primary truncate">
+                      {selectedFile.file_path}
+                    </span>
+                    <Badge variant="default" className="text-[10px]">
+                      {selectedFile.language || 'Plain Text'}
+                    </Badge>
                   </div>
-                ) : (
-                  <div className="p-3 rounded-lg border border-border bg-surface-secondary text-txt-muted text-center space-y-2">
-                    <Info className="h-5 w-5 mx-auto text-txt-muted" />
-                    <p>Click &quot;Explain File&quot; above to synthesize AST functions, classes, and purpose with Gemini AI.</p>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleExplainFile}
+                      loading={explaining}
+                      className="text-xs h-8"
+                    >
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Explain File
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyCode}
+                      className="text-xs h-8"
+                    >
+                      {copied ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* AI Explanation Drawer if triggered */}
+                {aiExplanation && (
+                  <div className="border-b border-border bg-surface-primary p-4 animate-slide-down">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-txt-primary">
+                          <Sparkles className="h-3.5 w-3.5 text-txt-primary" />
+                          AI File Analysis & Importance
+                        </div>
+                        <p className="text-xs text-txt-secondary leading-relaxed">
+                          {aiExplanation}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setAiExplanation(null)}
+                        className="text-xs text-txt-muted hover:text-txt-primary"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                <div>
-                  <h4 className="text-[11px] font-semibold text-txt-muted uppercase font-mono">Detected Key Symbols</h4>
-                  <div className="mt-2 space-y-1 font-mono text-[11px]">
-                    {lines
-                      .filter(l => l.includes('function') || l.includes('class') || l.includes('const ') && l.includes('=>'))
-                      .slice(0, 5)
-                      .map((s, i) => (
-                        <div key={i} className="p-1.5 rounded bg-surface-tertiary border border-border truncate text-txt-secondary">
-                          {s.trim().slice(0, 45)}
-                        </div>
+                {/* Code Body */}
+                <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed bg-surface-secondary">
+                  <table className="w-full border-collapse">
+                    <tbody>
+                      {lines.map((line, idx) => (
+                        <tr key={idx} className="hover:bg-zinc-800/30">
+                          <td className="w-10 select-none text-right pr-4 text-txt-muted opacity-40 font-mono text-[11px]">
+                            {idx + 1}
+                          </td>
+                          <td className="text-txt-primary whitespace-pre font-mono">
+                            {line || ' '}
+                          </td>
+                        </tr>
                       ))}
-                  </div>
+                    </tbody>
+                  </table>
                 </div>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-txt-muted text-xs p-6 space-y-2">
+                <Code className="h-8 w-8 text-txt-muted" />
+                <p>Select a file from the explorer to view contents and AI explanations.</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

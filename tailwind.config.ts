@@ -11,11 +11,11 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          primary: '#3B82F6',
-          secondary: '#8B5CF6',
-          dark: '#0F172A',
-          muted: '#64748B',
-          light: '#E2E8F0',
+          primary: '#FFFFFF',
+          secondary: '#71717A',
+          dark: '#090A0C',
+          muted: '#71717A',
+          light: '#E4E5E8',
         },
         surface: {
           primary: 'var(--surface-primary)',
@@ -26,7 +26,7 @@ const config: Config = {
         border: {
           DEFAULT: 'var(--border)',
           light: 'var(--border-light)',
-          focus: '#3B82F6',
+          focus: '#71717A',
         },
         txt: {
           primary: 'var(--txt-primary)',
@@ -34,11 +34,9 @@ const config: Config = {
           muted: 'var(--txt-muted)',
         },
         accent: {
-          DEFAULT: '#3B82F6',
-          hover: '#2563EB',
-          purple: '#8B5CF6',
-          'purple-hover': '#7C3AED',
-          muted: 'rgba(59, 130, 246, 0.15)',
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          muted: 'rgba(255, 255, 255, 0.12)',
         },
         status: {
           success: '#22C55E',

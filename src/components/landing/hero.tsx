@@ -32,9 +32,9 @@ export function Hero() {
 
   return (
     <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28">
-      {/* Subtle brand glow and grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(100,116,139,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.06)_1px,transparent_1px)] bg-[size:50px_50px]" />
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-b from-[#3B82F6]/15 via-[#8B5CF6]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      {/* Subtle monochrome atmospheric illumination and grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:48px_48px]" />
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[550px] h-[300px] bg-white/[0.03] rounded-full blur-3xl pointer-events-none" />
       
       <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
         {/* Brand pill */}
@@ -42,13 +42,13 @@ export function Hero() {
           <StructuraMark size={16} />
           <span className="font-semibold text-txt-primary">Structura</span>
           <span className="text-txt-muted">•</span>
-          <span className="font-mono text-[10px] tracking-wider uppercase text-brand-secondary font-semibold">Understand Any Codebase</span>
+          <span className="font-mono text-[10px] tracking-wider uppercase text-txt-muted font-semibold">Understand Any Codebase</span>
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-txt-primary leading-[1.1] mb-6">
           Understand Any Codebase.{' '}
           <br className="hidden sm:block" />
-          <span className="bg-gradient-to-r from-[#3B82F6] via-[#6366F1] to-[#8B5CF6] bg-clip-text text-transparent">
+          <span className="text-txt-primary">
             Start Contributing
           </span>{' '}
           <br className="hidden sm:block" />

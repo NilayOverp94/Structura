@@ -1,59 +1,57 @@
 export const tokens = {
   brand: {
-    primary: '#3B82F6', // Electric Blue
-    secondary: '#8B5CF6', // Vibrant Purple / Violet
-    background: '#0F172A', // Slate 900 / Brand Dark
-    text: '#64748B', // Slate 500 / Muted Brand Text
-    border: '#E2E8F0', // Slate 200 / Brand Light Border
+    primary: '#FFFFFF', // Crisp White
+    secondary: '#71717A', // Neutral Zinc
+    background: '#090A0C', // Deep Charcoal Black
+    text: '#A1A1AA', // Neutral Gray
+    border: '#27272A', // Zinc Border
   },
   colors: {
     dark: {
       bg: {
-        primary: '#0F172A',
-        secondary: '#1E293B',
-        tertiary: '#334155',
-        elevated: '#1E293B',
+        primary: '#090A0C',
+        secondary: '#121316',
+        tertiary: '#191A1E',
+        elevated: '#15161A',
       },
       border: {
-        default: '#334155',
-        light: '#475569',
-        focus: '#3B82F6',
+        default: '#22242A',
+        light: '#2E3038',
+        focus: '#52525B',
       },
       text: {
-        primary: '#F8FAFC',
-        secondary: '#94A3B8',
-        muted: '#64748B',
+        primary: '#EDEDED',
+        secondary: '#9B9DA6',
+        muted: '#646670',
       },
     },
     light: {
       bg: {
         primary: '#FFFFFF',
-        secondary: '#F8FAFC',
-        tertiary: '#F1F5F9',
+        secondary: '#F8F9FA',
+        tertiary: '#F1F3F5',
         elevated: '#FFFFFF',
       },
       border: {
-        default: '#E2E8F0',
-        light: '#CBD5E1',
-        focus: '#3B82F6',
+        default: '#E4E5E8',
+        light: '#D1D3D8',
+        focus: '#27272A',
       },
       text: {
-        primary: '#0F172A',
-        secondary: '#475569',
-        muted: '#64748B',
+        primary: '#090A0C',
+        secondary: '#5A5D66',
+        muted: '#848792',
       },
     },
     accent: {
-      blue: '#3B82F6',
-      purple: '#8B5CF6',
-      blueHover: '#2563EB',
-      purpleHover: '#7C3AED',
+      monochrome: '#FFFFFF',
+      monochromeHover: '#E4E4E7',
     },
     status: {
       success: '#22C55E',
       warning: '#F59E0B',
       error: '#EF4444',
-      info: '#3B82F6',
+      info: '#71717A',
     },
   },
   fonts: {

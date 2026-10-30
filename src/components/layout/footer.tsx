@@ -50,9 +50,6 @@ export function Footer() {
           <p className="text-xs text-txt-muted">
             © {new Date().getFullYear()} Structura. All rights reserved.
           </p>
-          <div className="flex items-center gap-3 text-xs text-txt-muted">
-            <span>Colors: #3B82F6 • #8B5CF6 • #0F172A</span>
-          </div>
         </div>
       </div>
     </footer>

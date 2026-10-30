@@ -8,31 +8,27 @@ import {
   CheckCircle2, 
   Circle, 
   FileCode2, 
-  Sparkles, 
-  ArrowRight, 
-  HelpCircle, 
-  TrendingUp, 
-  Layers
+  Loader2
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { DEMO_REPOSITORY, DEMO_ROADMAP } from '@/lib/demo-data';
 import { Repository, RoadmapPhase } from '@/types';
 
 export default function ContributorRoadmapPage() {
   const params = useParams();
-  const repoId = (params?.repositoryId as string) || 'demo-codecompass-repo';
+  const repoId = (params?.repositoryId as string) || '';
 
-  const [repository, setRepository] = useState<Repository>(DEMO_REPOSITORY);
-  const [roadmap, setRoadmap] = useState<RoadmapPhase[]>(DEMO_ROADMAP.roadmap);
-  const [progress, setProgress] = useState<Record<string, boolean>>(DEMO_ROADMAP.progress);
+  const [repository, setRepository] = useState<Repository | null>(null);
+  const [roadmap, setRoadmap] = useState<RoadmapPhase[]>([]);
+  const [progress, setProgress] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/repositories/${repoId}`).then((r) => r.json()),
-      fetch(`/api/repositories/${repoId}/roadmap/generate`, { method: 'POST' }).then((r) => r.json()),
+      fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/repositories/${repoId}/roadmap/generate`, { method: 'POST' }).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, roadmapData]) => {
         if (repoData?.repository) setRepository(repoData.repository);
@@ -42,7 +38,8 @@ export default function ContributorRoadmapPage() {
       })
       .catch((err) => {
         console.warn('Could not load roadmap:', err);
-      });
+      })
+      .finally(() => setLoading(false));
   }, [repoId]);
 
   const toggleStep = (stepId: string) => {
@@ -67,128 +64,139 @@ export default function ContributorRoadmapPage() {
       <AppHeader />
 
       <div className="flex-1 flex overflow-hidden">
-        <WorkspaceSidebar repository={repository} />
+        <WorkspaceSidebar repository={repository || ({ id: repoId, name: repoId, owner: '', full_name: repoId, github_url: '', stars: 0, forks: 0, default_branch: 'main', analysis_status: 'completed', created_at: '', updated_at: '' } as Repository)} />
 
-        <main className="flex-1 p-6 md:p-8 space-y-6 overflow-y-auto max-w-4xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-            <div>
-              <div className="flex items-center gap-2">
-                <Map className="h-5 w-5 text-accent" />
-                <h1 className="text-xl font-bold text-txt-primary">Contributor Onboarding Roadmap</h1>
-              </div>
-              <p className="text-xs text-txt-secondary mt-1">
-                A structured learning path synthesized by AI from the actual repository structure to guide your first contribution.
-              </p>
+        <main className="flex-1 p-6 md:p-8 space-y-8 overflow-y-auto max-w-4xl">
+          {/* Header */}
+          <div className="space-y-4 pb-6 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Map className="h-5 w-5 text-txt-primary" />
+              <h1 className="text-xl font-bold text-txt-primary">Contributor Onboarding Roadmap</h1>
             </div>
+            <p className="text-xs text-txt-secondary leading-relaxed">
+              Step-by-step learning progression tailored to the architecture and conventions of this codebase.
+            </p>
 
-            <div className="card p-3 min-w-[200px]">
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="text-txt-muted uppercase font-mono text-[10px]">Onboarding Readiness</span>
-                <span className="font-mono text-accent font-semibold">{progressPct}%</span>
+            {/* Overall Progress */}
+            {totalCount > 0 && (
+              <div className="card p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-txt-primary">Onboarding Progress</span>
+                  <span className="font-mono text-txt-muted">{completedCount} of {totalCount} steps completed ({progressPct}%)</span>
+                </div>
+                <ProgressBar value={progressPct} showPercentage={false} />
               </div>
-              <ProgressBar value={progressPct} showPercentage={false} size="sm" />
-              <p className="text-[10px] text-txt-muted mt-1 text-right">
-                {completedCount} of {totalCount} steps completed
-              </p>
-            </div>
+            )}
           </div>
 
-          {/* Progressive Phases */}
-          <div className="space-y-6">
-            {roadmap.map((phase) => (
-              <div key={phase.id} className="card space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-[10px] uppercase font-mono font-semibold text-accent">
-                      Phase {phase.phase}
-                    </span>
-                    <h2 className="text-base font-semibold text-txt-primary mt-0.5">
-                      {phase.title}
-                    </h2>
-                    <p className="text-xs text-txt-secondary mt-1">
-                      {phase.description}
-                    </p>
-                  </div>
-                </div>
+          {loading ? (
+            <div className="card flex items-center justify-center py-16 text-txt-muted text-xs gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Synthesizing learning roadmap...
+            </div>
+          ) : roadmap.length === 0 ? (
+            <div className="card text-center py-12 text-xs text-txt-muted">
+              No roadmap phases generated yet. Ensure repository files are indexed.
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {roadmap.map((phase) => {
+                const phaseCompleted = phase.steps.every((s) => progress[s.id]);
 
-                <div className="space-y-3 pt-2">
-                  {phase.steps.map((step) => {
-                    const isCompleted = Boolean(progress[step.id]);
-
-                    return (
-                      <div
-                        key={step.id}
-                        className={`p-4 rounded-lg border transition-colors ${
-                          isCompleted
-                            ? 'bg-surface-primary/60 border-status-success/30'
-                            : 'bg-surface-primary border-border hover:border-border-light'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <button
-                            onClick={() => toggleStep(step.id)}
-                            className="mt-0.5 flex-shrink-0 text-txt-muted hover:text-accent transition-colors"
-                          >
-                            {isCompleted ? (
-                              <CheckCircle2 className="h-5 w-5 text-status-success" />
-                            ) : (
-                              <Circle className="h-5 w-5" />
-                            )}
-                          </button>
-
-                          <div className="flex-1 space-y-2 text-xs">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <h3 className={`font-semibold ${isCompleted ? 'text-txt-muted line-through' : 'text-txt-primary'}`}>
-                                {step.title}
-                              </h3>
-                              <Badge
-                                variant={
-                                  step.difficulty === 'beginner'
-                                    ? 'success'
-                                    : step.difficulty === 'intermediate'
-                                    ? 'warning'
-                                    : 'error'
-                                }
-                                className="text-[10px] capitalize"
-                              >
-                                {step.difficulty}
-                              </Badge>
-                            </div>
-
-                            <p className="text-txt-secondary leading-relaxed">
-                              {step.explanation}
-                            </p>
-
-                            <div className="p-2.5 rounded bg-surface-secondary border border-border/70 space-y-1">
-                              <p className="text-[11px] text-txt-muted">
-                                <strong className="text-txt-primary">Why it matters:</strong> {step.why_it_matters}
-                              </p>
-                            </div>
-
-                            {step.relevant_files && step.relevant_files.length > 0 && (
-                              <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                                <span className="text-[10px] font-mono text-txt-muted">Files to inspect:</span>
-                                {step.relevant_files.map((file) => (
-                                  <Link
-                                    key={file}
-                                    href={`/workspace/${repoId}/files?file=${encodeURIComponent(file)}`}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-tertiary border border-border text-[11px] font-mono text-accent hover:border-accent transition-colors"
-                                  >
-                                    <FileCode2 className="h-3 w-3" />
-                                    {file}
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                return (
+                  <div key={phase.id} className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-semibold text-txt-primary">
+                            {phase.title}
+                          </h2>
+                          {phaseCompleted && (
+                            <Badge variant="success">Completed</Badge>
+                          )}
                         </div>
+                        <p className="text-xs text-txt-secondary mt-1">
+                          {phase.description}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {phase.steps.map((step) => {
+                        const isDone = !!progress[step.id];
+
+                        return (
+                          <div
+                            key={step.id}
+                            className={`card p-4 transition-colors ${
+                              isDone ? 'bg-surface-secondary/40 border-border/60' : 'bg-surface-secondary'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => toggleStep(step.id)}
+                                className="mt-0.5 flex-shrink-0 text-txt-muted hover:text-txt-primary"
+                              >
+                                {isDone ? (
+                                  <CheckCircle2 className="h-4 w-4 text-status-success" />
+                                ) : (
+                                  <Circle className="h-4 w-4" />
+                                )}
+                              </button>
+
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span
+                                    className={`text-xs font-semibold ${
+                                      isDone ? 'line-through text-txt-muted' : 'text-txt-primary'
+                                    }`}
+                                  >
+                                    {step.title}
+                                  </span>
+
+                                  {step.difficulty && (
+                                    <Badge variant="default" className="text-[10px] uppercase font-mono">
+                                      {step.difficulty}
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <p className="text-xs text-txt-secondary leading-relaxed">
+                                  {step.explanation}
+                                </p>
+
+                                {step.why_it_matters && (
+                                  <p className="text-[11px] text-txt-muted bg-surface-primary p-2 rounded border border-border">
+                                    <strong className="text-txt-primary font-medium">Why it matters:</strong> {step.why_it_matters}
+                                  </p>
+                                )}
+
+                                {step.relevant_files && step.relevant_files.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span className="text-[10px] text-txt-muted font-mono">Files:</span>
+                                    {step.relevant_files.map((file) => (
+                                      <Link
+                                        key={file}
+                                        href={`/workspace/${repoId}/files?file=${encodeURIComponent(file)}`}
+                                        className="inline-flex items-center gap-1 text-[11px] font-mono text-txt-secondary hover:text-txt-primary bg-surface-primary px-2 py-0.5 rounded border border-border"
+                                      >
+                                        <FileCode2 className="h-3 w-3" />
+                                        {file}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </main>
       </div>
     </div>

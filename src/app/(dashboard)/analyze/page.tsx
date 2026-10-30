@@ -61,8 +61,10 @@ function AnalyzeForm() {
         throw new Error(data.error || 'Failed to start repository analysis.');
       }
 
-      // If backend responded with immediate completion or repo ID
-      const targetRepoId = data.repository?.id || data.job?.repository_id || 'demo-codecompass-repo';
+      const targetRepoId = data.repository?.id;
+      if (!targetRepoId) {
+        throw new Error(data.error || 'Failed to index repository.');
+      }
 
       // Animate through stages based on actual response
       for (let i = 1; i < ANALYSIS_STAGES.length; i++) {
@@ -75,7 +77,6 @@ function AnalyzeForm() {
       setCompletedRepoId(targetRepoId);
     } catch (err: any) {
       console.error('Analysis error:', err);
-      // If live GitHub token fails or rate limit hits, allow fallback to demo repo
       setError(err.message || 'Analysis could not be completed.');
     } finally {
       setAnalyzing(false);
@@ -126,15 +127,8 @@ function AnalyzeForm() {
                   <div>
                     <p className="font-semibold">{error}</p>
                     <p className="mt-1 text-[11px] text-txt-secondary">
-                      You can also explore our pre-indexed demo repository to see the complete architecture and AI chat features immediately.
+                      Please verify the repository is public and formatted as https://github.com/owner/repository
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => router.push('/workspace/demo-codecompass-repo')}
-                      className="mt-2 text-accent underline hover:text-accent-hover text-xs font-medium block"
-                    >
-                      Open Demo Workspace →
-                    </button>
                   </div>
                 </div>
               )}

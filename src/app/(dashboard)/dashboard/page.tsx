@@ -8,25 +8,22 @@ import {
   Search, 
   Star, 
   ExternalLink, 
-  Layers, 
   ArrowRight,
-  Database,
-  Code2,
-  Sparkles,
-  FolderGit2
+  FolderGit2,
+  Loader2
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { parseGitHubUrl } from '@/lib/validation/github-url';
-import { DEMO_REPOSITORY } from '@/lib/demo-data';
 import { Repository } from '@/types';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [repoUrl, setRepoUrl] = useState('');
   const [error, setError] = useState('');
-  const [repositories, setRepositories] = useState<Repository[]>([DEMO_REPOSITORY]);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/repositories')
@@ -36,9 +33,8 @@ export default function DashboardPage() {
           setRepositories(data.repositories);
         }
       })
-      .catch(() => {
-        // Keep initial demo repo
-      });
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const handleAnalyze = (e: React.FormEvent) => {
@@ -59,9 +55,7 @@ export default function DashboardPage() {
     router.push(`/analyze?url=${encodeURIComponent(repoUrl.trim())}`);
   };
 
-  // Calculate actual database-derived metrics
-  const totalAnalyzed = repositories.length;
-  const totalStars = repositories.reduce((acc, r) => acc + r.stars, 0);
+  const totalStars = repositories.reduce((acc, r) => acc + (r.stars || 0), 0);
   const detectedLanguages = Array.from(new Set(repositories.map(r => r.primary_language).filter(Boolean)));
 
   return (
@@ -77,18 +71,12 @@ export default function DashboardPage() {
               Select an analyzed codebase to inspect its architecture, or submit a new GitHub repository.
             </p>
           </div>
-          <Link href="/workspace/demo-codecompass-repo">
-            <Button variant="secondary" size="sm">
-              <Sparkles className="h-3.5 w-3.5 text-accent mr-1.5" />
-              Explore Sample Codebase
-            </Button>
-          </Link>
         </div>
 
         {/* Repository Submission Panel */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2">
-            <FolderGit2 className="h-5 w-5 text-accent" />
+            <FolderGit2 className="h-5 w-5 text-txt-primary" />
             <h2 className="text-base font-semibold text-txt-primary">Analyze New GitHub Repository</h2>
           </div>
           <form onSubmit={handleAnalyze} className="relative">
@@ -99,106 +87,121 @@ export default function DashboardPage() {
                   type="text"
                   value={repoUrl}
                   onChange={(e) => { setRepoUrl(e.target.value); setError(''); }}
-                  placeholder="https://github.com/owner/repository"
+                  placeholder="https://github.com/facebook/react"
                   className="input-field pl-10 font-mono text-sm"
                 />
               </div>
               <Button type="submit" variant="primary" className="flex-shrink-0">
-                <Search className="h-4 w-4 mr-1.5" />
-                Analyze Codebase
+                <Search className="h-4 w-4" />
+                Analyze
               </Button>
             </div>
-            {error && <p className="text-xs text-status-error mt-2">{error}</p>}
+            {error && (
+              <p className="text-xs text-status-error mt-2">{error}</p>
+            )}
           </form>
-          <p className="text-xs text-txt-muted">
-            Supports public repositories. Indexing extracts file trees, frameworks, imports, and RAG embeddings.
-          </p>
         </div>
 
-        {/* Repository Stats */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="card p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-txt-muted">Repositories Indexed</p>
-            <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{totalAnalyzed}</p>
-            <p className="text-xs text-txt-secondary mt-1">Active workspace environments</p>
+            <p className="section-label">Total Repositories</p>
+            <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{repositories.length}</p>
+            <p className="text-xs text-txt-secondary mt-1">Active in your workspace</p>
           </div>
           <div className="card p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-txt-muted">Languages Supported</p>
-            <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{detectedLanguages.length || 1}</p>
-            <p className="text-xs text-txt-secondary mt-1">{detectedLanguages.join(', ') || 'TypeScript'}</p>
-          </div>
-          <div className="card p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-txt-muted">Total GitHub Stars</p>
+            <p className="section-label">Combined GitHub Stars</p>
             <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{totalStars.toLocaleString()}</p>
-            <p className="text-xs text-txt-secondary mt-1">Across analyzed repositories</p>
+            <p className="text-xs text-txt-secondary mt-1">Across analyzed codebases</p>
+          </div>
+          <div className="card p-4">
+            <p className="section-label">Languages Detected</p>
+            <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{detectedLanguages.length || 0}</p>
+            <p className="text-xs text-txt-secondary mt-1">
+              {detectedLanguages.slice(0, 3).join(', ') || 'Ready for ingestion'}
+            </p>
           </div>
         </div>
 
-        {/* Recently Analyzed Repositories */}
+        {/* Analyzed Repositories */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-txt-primary">Analyzed Repositories</h2>
             <span className="text-xs text-txt-muted font-mono">{repositories.length} total</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {repositories.map((repo) => (
-              <div
-                key={repo.id}
-                className="card-hover flex flex-col justify-between p-5 space-y-4"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Link
-                          href={`/workspace/${repo.id}`}
-                          className="text-base font-semibold text-txt-primary hover:text-accent transition-colors"
-                        >
-                          {repo.name}
-                        </Link>
-                        <Badge variant="success">Indexed</Badge>
+          {loading ? (
+            <div className="card flex items-center justify-center py-12 text-txt-muted text-xs gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading workspaces...
+            </div>
+          ) : repositories.length === 0 ? (
+            <div className="card text-center py-14 space-y-3">
+              <FolderGit2 className="h-10 w-10 text-txt-muted mx-auto" />
+              <h3 className="text-sm font-semibold text-txt-primary">No repositories analyzed yet</h3>
+              <p className="text-xs text-txt-secondary max-w-sm mx-auto">
+                Paste any public GitHub repository URL into the field above to index its architecture, dependencies, and files.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {repositories.map((repo) => (
+                <div
+                  key={repo.id}
+                  className="card-hover flex flex-col justify-between p-5 space-y-4"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/workspace/${repo.id}`}
+                            className="text-base font-semibold text-txt-primary hover:underline transition-colors"
+                          >
+                            {repo.name}
+                          </Link>
+                          <Badge variant="success">Indexed</Badge>
+                        </div>
+                        <p className="text-xs text-txt-muted font-mono mt-0.5">{repo.owner}</p>
                       </div>
-                      <p className="text-xs text-txt-muted font-mono mt-0.5">{repo.owner}</p>
+                      <a
+                        href={repo.github_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 rounded text-txt-muted hover:text-txt-primary"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
                     </div>
-                    <a
-                      href={repo.github_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 rounded text-txt-muted hover:text-txt-primary"
+
+                    <p className="text-xs text-txt-secondary mt-3 line-clamp-2">
+                      {repo.description || 'No description provided.'}
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-txt-muted">
+                    <div className="flex items-center gap-3 font-mono">
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3 w-3 text-status-warning" />
+                        {repo.stars.toLocaleString()}
+                      </span>
+                      <span>{repo.primary_language}</span>
+                    </div>
+
+                    <Link
+                      href={`/workspace/${repo.id}`}
+                      className="inline-flex items-center gap-1 text-txt-primary hover:underline font-medium"
                     >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
+                      Open Workspace
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
                   </div>
-
-                  <p className="text-xs text-txt-secondary mt-3 line-clamp-2">
-                    {repo.description || 'No description provided.'}
-                  </p>
                 </div>
-
-                <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-txt-muted">
-                  <div className="flex items-center gap-3 font-mono">
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3 text-status-warning" />
-                      {repo.stars.toLocaleString()}
-                    </span>
-                    <span>{repo.primary_language}</span>
-                  </div>
-
-                  <Link
-                    href={`/workspace/${repo.id}`}
-                    className="inline-flex items-center gap-1 text-accent hover:underline font-medium"
-                  >
-                    Open Workspace
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
   );
 }
-

@@ -4,11 +4,11 @@ export const APP_CONFIG = {
   description: 'AI-powered repository intelligence platform that helps developers explore architecture, understand unfamiliar codebases, and contribute faster.',
   url: process.env.NEXT_PUBLIC_APP_URL || 'https://structura-eosin.vercel.app',
   brandColors: {
-    primary: '#3B82F6',
-    secondary: '#8B5CF6',
-    background: '#0F172A',
-    text: '#64748B',
-    border: '#E2E8F0',
+    primary: '#FFFFFF',
+    secondary: '#71717A',
+    background: '#090A0C',
+    text: '#A1A1AA',
+    border: '#27272A',
   },
 } as const;
 
