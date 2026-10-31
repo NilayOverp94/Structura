@@ -25,23 +25,37 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Repository, RepositoryInsights } from '@/types';
+import { getWorkspaceCache, setWorkspaceCache } from '@/lib/cache/workspace-cache';
 
 export default function WorkspaceOverviewPage() {
   const params = useParams();
   const repoId = params.repositoryId as string;
 
-  const [repository, setRepository] = useState<Repository | null>(null);
-  const [insights, setInsights] = useState<RepositoryInsights | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [repository, setRepository] = useState<Repository | null>(() => getWorkspaceCache(repoId)?.repository || null);
+  const [insights, setInsights] = useState<RepositoryInsights | null>(() => getWorkspaceCache(repoId)?.insights || null);
+  const [loading, setLoading] = useState(() => !getWorkspaceCache(repoId)?.repository);
 
   useEffect(() => {
+    const c = getWorkspaceCache(repoId);
+    if (c?.repository) {
+      setRepository(c.repository);
+      if (c.insights) setInsights(c.insights);
+      setLoading(false);
+    }
+
     Promise.all([
       fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
       fetch(`/api/repositories/${repoId}/architecture`).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, insightsData]) => {
-        if (repoData?.repository) setRepository(repoData.repository);
-        if (insightsData?.insights) setInsights(insightsData.insights);
+        if (repoData?.repository) {
+          setRepository(repoData.repository);
+          setWorkspaceCache(repoId, { repository: repoData.repository });
+        }
+        if (insightsData?.insights) {
+          setInsights(insightsData.insights);
+          setWorkspaceCache(repoId, { insights: insightsData.insights });
+        }
       })
       .catch((err) => {
         console.warn('Could not load live repo workspace:', err);

@@ -19,13 +19,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { parseGitHubUrl } from '@/lib/validation/github-url';
 import { Repository } from '@/types';
+import { getCachedRepoList, setCachedRepoList } from '@/lib/cache/workspace-cache';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [repoUrl, setRepoUrl] = useState('');
   const [error, setError] = useState('');
-  const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [repositories, setRepositories] = useState<Repository[]>(() => getCachedRepoList());
+  const [loading, setLoading] = useState(() => getCachedRepoList().length === 0);
 
   useEffect(() => {
     fetch('/api/repositories')
@@ -33,6 +34,7 @@ export default function DashboardPage() {
       .then((data) => {
         if (data.repositories && Array.isArray(data.repositories)) {
           setRepositories(data.repositories);
+          setCachedRepoList(data.repositories);
         }
       })
       .catch(() => {})

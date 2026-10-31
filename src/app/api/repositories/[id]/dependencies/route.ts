@@ -13,7 +13,10 @@ export async function GET(
     const files = await RepositoryStore.getFiles(id);
     const extracted = extractDependencies(files);
 
-    return NextResponse.json({ dependencies: extracted || [] });
+    return NextResponse.json(
+      { dependencies: extracted || [] },
+      { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
+    );
   } catch (error: any) {
     return NextResponse.json({ dependencies: [] });
   }

@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatFileSize, cn } from '@/lib/utils';
 import { Repository, RepositoryFile } from '@/types';
 import { getUserPreferences, UserPreferences, DEFAULT_USER_PREFERENCES } from '@/lib/settings/user-settings';
+import { getWorkspaceCache, setWorkspaceCache } from '@/lib/cache/workspace-cache';
 
 function FileExplorerContent() {
   const params = useParams();
@@ -29,14 +30,20 @@ function FileExplorerContent() {
   const searchParams = useSearchParams();
   const fileQuery = searchParams.get('file');
 
-  const [repository, setRepository] = useState<Repository | null>(null);
-  const [files, setFiles] = useState<RepositoryFile[]>([]);
-  const [selectedFile, setSelectedFile] = useState<RepositoryFile | null>(null);
+  const cached = getWorkspaceCache(repoId);
+  const [repository, setRepository] = useState<Repository | null>(() => cached?.repository || null);
+  const [files, setFiles] = useState<RepositoryFile[]>(() => cached?.files || []);
+  const [selectedFile, setSelectedFile] = useState<RepositoryFile | null>(() => {
+    if (cached?.files && cached.files.length > 0) {
+      return fileQuery ? cached.files.find(f => f.file_path === fileQuery) || cached.files[0] : cached.files[0];
+    }
+    return null;
+  });
   const [search, setSearch] = useState('');
   const [copied, setCopied] = useState(false);
   const [explaining, setExplaining] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !cached?.files || cached.files.length === 0);
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
 
   useEffect(() => {
@@ -44,29 +51,27 @@ function FileExplorerContent() {
   }, []);
 
   useEffect(() => {
+    const c = getWorkspaceCache(repoId);
+    if (c?.files && c.files.length > 0) {
+      setFiles(c.files);
+      const init = fileQuery ? c.files.find(f => f.file_path === fileQuery) || c.files[0] : c.files[0];
+      setSelectedFile(init);
+      setLoading(false);
+    }
+
     Promise.all([
       fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
       fetch(`/api/repositories/${repoId}/files`).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, filesData]) => {
-        if (repoData?.repository) setRepository(repoData.repository);
+        if (repoData?.repository) {
+          setRepository(repoData.repository);
+          setWorkspaceCache(repoId, { repository: repoData.repository });
+        }
         if (filesData?.files && filesData.files.length > 0) {
           setFiles(filesData.files);
-          const initial = fileQuery
-            ? filesData.files.find((f: any) => f.file_path === fileQuery) || filesData.files[0]
-            : filesData.files[0];
-          setSelectedFile(initial);
-          if (initial && !initial.content) {
-            fetch(`/api/repositories/${repoId}/files/${encodeURIComponent(initial.file_path)}`)
-              .then(r => r.ok ? r.json() : null)
-              .then(d => {
-                if (d?.file?.content) {
-                  setSelectedFile(d.file);
-                  setFiles(prev => prev.map(f => f.file_path === initial.file_path ? d.file : f));
-                }
-              })
-              .catch(() => {});
-          }
+          setWorkspaceCache(repoId, { files: filesData.files });
+          setSelectedFile(prev => prev || filesData.files[0]);
         }
       })
       .catch((err) => {

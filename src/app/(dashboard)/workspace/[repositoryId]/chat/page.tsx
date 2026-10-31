@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { notionEase } from '@/lib/animations/motion';
@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Repository } from '@/types';
 import { getUserPreferences, UserPreferences } from '@/lib/settings/user-settings';
+import { getWorkspaceCache, setWorkspaceCache } from '@/lib/cache/workspace-cache';
 
 interface ChatMessage {
   id: string;
@@ -34,6 +35,8 @@ interface ChatMessage {
 
 export default function AskCodebasePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const qParam = searchParams.get('q');
   const repoId = (params?.repositoryId as string) || '';
 
   const [repository, setRepository] = useState<Repository | null>(null);
@@ -49,7 +52,19 @@ export default function AskCodebasePage() {
 
   useEffect(() => {
     setPrefs(getUserPreferences());
-  }, []);
+    const c = getWorkspaceCache(repoId);
+    if (c?.repository) {
+      setRepository(c.repository);
+      setMessages([
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: `Hello! I am Structura, your AI codebase navigation engineer for **${c.repository.full_name}**.\n\nI answer technical questions grounded exclusively in the indexed source code and architecture of this repository. Ask about execution entry points, dependencies, or how to implement a specific feature.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    }
+  }, [repoId]);
 
   useEffect(() => {
     fetch(`/api/repositories/${repoId}`)
@@ -57,6 +72,7 @@ export default function AskCodebasePage() {
       .then((data) => {
         if (data?.repository) {
           setRepository(data.repository);
+          setWorkspaceCache(repoId, { repository: data.repository });
           setMessages([
             {
               id: 'welcome',
@@ -70,7 +86,13 @@ export default function AskCodebasePage() {
       .catch(() => {});
   }, [repoId]);
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(qParam || '');
+
+  useEffect(() => {
+    if (qParam) {
+      setInput(qParam);
+    }
+  }, [qParam]);
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -284,8 +306,8 @@ export default function AskCodebasePage() {
                 </div>
 
                 {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-zinc-800 border border-zinc-700/80 flex items-center justify-center flex-shrink-0 text-white dark:text-zinc-100 font-bold text-xs shadow-sm">
-                    {(typeof window !== 'undefined' ? (localStorage.getItem('structura_username') || prefs?.displayName || 'N') : 'N').trim().charAt(0).toUpperCase()}
+                  <div className="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-zinc-800 border border-zinc-700/80 flex items-center justify-center flex-shrink-0 text-white dark:text-zinc-100 font-bold text-xs shadow-sm select-none">
+                    {(typeof window !== 'undefined' ? (localStorage.getItem('structura_username') || localStorage.getItem('structura_user_email') || (prefs?.displayName && prefs.displayName !== 'Developer' ? prefs.displayName : '') || 'Nilay') : 'Nilay').trim().charAt(0).toUpperCase() || 'N'}
                   </div>
                 )}
               </motion.div>

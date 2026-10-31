@@ -49,12 +49,21 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
       supabase.auth.getUser().then(({ data: { user } }) => {
         if (user) {
           const emailVal = user.email || '';
-          setProfileEmail(emailVal);
-          try {
-            localStorage.setItem('structura_user_email', emailVal);
-          } catch {}
+          if (emailVal) {
+            setProfileEmail(emailVal);
+            try {
+              localStorage.setItem('structura_user_email', emailVal);
+            } catch {}
+          }
 
-          const metaName = user.user_metadata?.username || user.user_metadata?.display_name || user.user_metadata?.name;
+          const metaName = 
+            user.user_metadata?.user_name || 
+            user.user_metadata?.full_name || 
+            user.user_metadata?.name || 
+            user.user_metadata?.username || 
+            user.user_metadata?.display_name || 
+            user.user_metadata?.preferred_username;
+
           if (metaName) {
             setProfileName(metaName);
             try {
@@ -101,7 +110,8 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
     window.location.href = '/login';
   };
 
-  const displayName = profileName || userEmail || profileEmail || 'Nilay';
+  const storedName = typeof window !== 'undefined' ? (localStorage.getItem('structura_username') || localStorage.getItem('structura_user_email')) : '';
+  const displayName = profileName || userEmail || profileEmail || storedName || 'Nilay';
   const initial = (displayName.trim().charAt(0) || 'N').toUpperCase();
 
   return (
@@ -136,9 +146,9 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="User Account Menu"
             title={`Signed in as ${displayName}`}
-            className="flex items-center gap-2 p-1 rounded-lg border border-border hover:bg-surface-secondary transition-colors"
+            className="flex items-center gap-2 p-1 rounded-lg border border-border hover:bg-surface-secondary focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 transition-colors"
           >
-            <div className="w-7 h-7 rounded-md bg-zinc-900 dark:bg-zinc-800 text-white dark:text-zinc-100 flex items-center justify-center text-xs font-bold shadow-sm">
+            <div className="w-7 h-7 rounded-md bg-zinc-900 dark:bg-zinc-800 text-white dark:text-zinc-100 flex items-center justify-center text-xs font-bold shadow-sm select-none">
               {initial}
             </div>
           </button>

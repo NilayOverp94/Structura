@@ -11,6 +11,8 @@ import ReactFlow, {
   MiniMap, 
   Node, 
   Edge,
+  Handle,
+  Position,
   useNodesState,
   useEdgesState,
   MarkerType
@@ -22,46 +24,117 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useTheme } from '@/components/theme-provider';
 import { getUserPreferences } from '@/lib/settings/user-settings';
+import { cn } from '@/lib/utils';
 import { 
   Network, 
   Search, 
-  Layers, 
   ArrowRight, 
   FileCode2, 
-  Info,
-  Loader2,
-  RefreshCw,
-  Sparkles,
-  Boxes,
-  Database,
-  Globe,
-  Settings,
-  Cpu
+  Loader2, 
+  RefreshCw, 
+  Sparkles, 
+  Boxes, 
+  Database, 
+  Globe, 
+  Settings, 
+  Cpu,
+  MessageSquare,
+  X
 } from 'lucide-react';
 import { Repository } from '@/types';
+import { getWorkspaceCache, setWorkspaceCache } from '@/lib/cache/workspace-cache';
+
+interface ModuleNodeData {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  path: string;
+  files: string[];
+  fileCount: number;
+}
+
+function getCategoryIcon(category: string) {
+  switch (category?.toLowerCase()) {
+    case 'frontend': return Globe;
+    case 'api': return Network;
+    case 'database': return Database;
+    case 'config': return Settings;
+    default: return Cpu;
+  }
+}
+
+function ArchitectureNodeComponent({ data, selected }: { data: ModuleNodeData; selected: boolean }) {
+  const Icon = getCategoryIcon(data.category);
+
+  return (
+    <div
+      className={cn(
+        "px-4 py-3.5 rounded-xl border transition-all duration-200 min-w-[250px] max-w-[280px] shadow-sm cursor-pointer select-none",
+        selected
+          ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-zinc-900 dark:border-white ring-2 ring-zinc-400/40 dark:ring-white/40 shadow-xl scale-[1.02]"
+          : "bg-surface-primary text-txt-primary border-border hover:border-zinc-500 hover:shadow-md"
+      )}
+    >
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-zinc-900 rounded-full"
+      />
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-1.5">
+          <Icon className={cn("h-3.5 w-3.5", selected ? "text-zinc-300 dark:text-zinc-700" : "text-txt-muted")} />
+          <span className={cn(
+            "text-[10px] font-mono uppercase tracking-wider font-bold",
+            selected ? "text-zinc-300 dark:text-zinc-700" : "text-txt-muted"
+          )}>
+            {data.category}
+          </span>
+        </div>
+        <span className={cn(
+          "text-[10px] font-mono px-2 py-0.5 rounded border",
+          selected
+            ? "bg-zinc-800 dark:bg-zinc-200 text-zinc-300 dark:text-zinc-800 border-zinc-700 dark:border-zinc-300"
+            : "bg-surface-secondary text-txt-muted border-border"
+        )}>
+          {data.fileCount} {data.fileCount === 1 ? 'file' : 'files'}
+        </span>
+      </div>
+
+      <div className={cn("font-semibold text-xs truncate mb-1", selected ? "text-white dark:text-zinc-950 font-bold" : "text-txt-primary")}>
+        {data.name}
+      </div>
+
+      <div className={cn("text-[11px] line-clamp-2 leading-relaxed", selected ? "text-zinc-300 dark:text-zinc-600" : "text-txt-muted")}>
+        {data.description}
+      </div>
+
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!w-2.5 !h-2.5 !bg-zinc-400 !border-2 !border-zinc-900 rounded-full"
+      />
+    </div>
+  );
+}
 
 export default function ArchitecturePage() {
   const params = useParams();
   const repoId = (params?.repositoryId as string) || '';
   const { resolvedTheme } = useTheme();
 
-  const [repository, setRepository] = useState<Repository | null>(null);
+  const [repository, setRepository] = useState<Repository | null>(() => getWorkspaceCache(repoId)?.repository || null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [selectedNode, setSelectedNode] = useState<Node['data'] | null>(null);
+  const [selectedNode, setSelectedNode] = useState<ModuleNodeData | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [loading, setLoading] = useState(() => !getWorkspaceCache(repoId)?.insights?.architecture?.layers);
   const [resynthesizing, setResynthesizing] = useState(false);
 
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'frontend': return Globe;
-      case 'api': return Network;
-      case 'database': return Database;
-      case 'config': return Settings;
-      default: return Cpu;
-    }
-  };
+  const nodeTypes = useMemo(() => ({
+    moduleNode: ArchitectureNodeComponent,
+  }), []);
 
   const buildGraph = useCallback((rawLayers: any[]) => {
     let layers = rawLayers;
@@ -94,59 +167,44 @@ export default function ArchitecturePage() {
           description: 'Database schema, persistent store client, and storage configuration.',
           files: ['supabase/config.toml', 'package.json'],
         },
+        {
+          name: 'Project Configuration & Tooling',
+          category: 'config',
+          description: 'Package definitions, TypeScript configuration, and bundler options.',
+          files: ['package.json', 'README.md'],
+        },
       ];
     }
 
     const dynamicNodes: Node[] = [];
     const dynamicEdges: Edge[] = [];
     const isDark = resolvedTheme === 'dark';
-
-    // Tiered architectural layout coordinates
-    const layoutPositions = [
-      { x: 260, y: 40 },   // Top: Client / UI
-      { x: 260, y: 190 },  // Middle: API / Edge Handlers
-      { x: 260, y: 340 },  // Middle-Lower: Core Services
-      { x: 70, y: 490 },   // Bottom-Left: Data & Persistence
-      { x: 450, y: 490 },  // Bottom-Right: Build & Config
-      { x: 260, y: 640 },  // Bottom: External Systems
-    ];
+    const total = layers.length;
 
     layers.forEach((layer: any, idx: number) => {
-      const pos = layoutPositions[idx] || {
-        x: 80 + (idx % 3) * 360,
-        y: 80 + Math.floor(idx / 3) * 180,
-      };
+      let pos = { x: 300, y: 40 + idx * 160 };
+      if (total >= 5) {
+        if (idx === 3) pos = { x: 120, y: 520 };
+        else if (idx === 4) pos = { x: 480, y: 520 };
+        else if (idx > 4) pos = { x: 300, y: 520 + (idx - 4) * 160 };
+      }
+
       const nodeId = `layer-${idx}`;
+      const nodeData: ModuleNodeData = {
+        id: nodeId,
+        name: layer.name,
+        category: layer.category || 'services',
+        description: layer.description || `Handles ${layer.name} logic.`,
+        path: layer.files?.[0] || 'src/',
+        files: layer.files && layer.files.length > 0 ? layer.files : ['src/index.ts'],
+        fileCount: layer.files?.length || 1,
+      };
 
       dynamicNodes.push({
         id: nodeId,
-        type: 'default',
-        data: {
-          label: `${layer.name}\n${(layer.category || 'MODULE').toUpperCase()}`,
-          name: layer.name,
-          category: layer.category || 'services',
-          description: layer.description || `Handles ${layer.name} logic.`,
-          path: layer.files?.[0] || 'src/',
-          files: layer.files && layer.files.length > 0 ? layer.files : ['src/index.ts'],
-          fileCount: layer.files?.length || 1,
-        },
+        type: 'moduleNode',
+        data: nodeData,
         position: pos,
-        style: {
-          background: isDark ? '#121316' : '#FFFFFF',
-          color: isDark ? '#EDEDED' : '#090A0C',
-          border: isDark 
-            ? (idx === 0 ? '1.5px solid #FFFFFF' : '1px solid #27272A')
-            : (idx === 0 ? '1.5px solid #090A0C' : '1px solid #E4E5E8'),
-          borderRadius: 10,
-          padding: '14px 18px',
-          fontSize: 12,
-          fontWeight: 600,
-          minWidth: 230,
-          boxShadow: isDark 
-            ? '0 4px 16px rgba(0,0,0,0.5)' 
-            : '0 4px 12px rgba(0,0,0,0.06)',
-          cursor: 'pointer',
-        },
       });
 
       // Connect layers in logical architectural data-flow sequences
@@ -171,24 +229,22 @@ export default function ArchitecturePage() {
           style: { stroke: isDark ? '#71717A' : '#A1A1AA', strokeWidth: 2 },
         });
       } else if (idx === 3) {
-        // Services -> Database
         dynamicEdges.push({
           id: 'edge-2-3',
           source: 'layer-2',
           target: 'layer-3',
           animated: true,
-          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#A1A1AA' : '#52525B' },
-          style: { stroke: isDark ? '#52525B' : '#CBD5E1', strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#EDEDED' : '#18181B' },
+          style: { stroke: isDark ? '#71717A' : '#A1A1AA', strokeWidth: 2 },
         });
       } else if (idx === 4) {
-        // Services -> Config/Build
         dynamicEdges.push({
           id: 'edge-2-4',
           source: 'layer-2',
           target: 'layer-4',
           animated: true,
-          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#A1A1AA' : '#52525B' },
-          style: { stroke: isDark ? '#52525B' : '#CBD5E1', strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#EDEDED' : '#18181B' },
+          style: { stroke: isDark ? '#71717A' : '#A1A1AA', strokeWidth: 2 },
         });
       } else if (idx > 4) {
         const prevId = `layer-${idx - 1}`;
@@ -197,8 +253,8 @@ export default function ArchitecturePage() {
           source: prevId,
           target: nodeId,
           animated: true,
-          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#A1A1AA' : '#52525B' },
-          style: { stroke: isDark ? '#52525B' : '#CBD5E1', strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#EDEDED' : '#18181B' },
+          style: { stroke: isDark ? '#71717A' : '#A1A1AA', strokeWidth: 2 },
         });
       }
     });
@@ -211,15 +267,26 @@ export default function ArchitecturePage() {
   }, [resolvedTheme, setEdges, setNodes]);
 
   useEffect(() => {
+    const cached = getWorkspaceCache(repoId);
+    if (cached?.repository) setRepository(cached.repository);
+    if (cached?.insights?.architecture?.layers && cached.insights.architecture.layers.length > 1) {
+      buildGraph(cached.insights.architecture.layers);
+      setLoading(false);
+    }
+
     Promise.all([
       fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
       fetch(`/api/repositories/${repoId}/architecture`).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, archData]) => {
-        if (repoData?.repository) setRepository(repoData.repository);
+        if (repoData?.repository) {
+          setRepository(repoData.repository);
+          setWorkspaceCache(repoId, { repository: repoData.repository });
+        }
 
         if (archData?.insights?.architecture?.layers && archData.insights.architecture.layers.length > 0) {
           buildGraph(archData.insights.architecture.layers);
+          setWorkspaceCache(repoId, { insights: archData.insights });
         }
       })
       .catch((err) => {
@@ -243,6 +310,7 @@ export default function ArchitecturePage() {
       const data = await res.json();
       if (data?.insights?.architecture?.layers) {
         buildGraph(data.insights.architecture.layers);
+        setWorkspaceCache(repoId, { insights: data.insights });
       }
     } catch (err) {
       console.warn('Could not re-synthesize architecture graph:', err);
@@ -256,24 +324,28 @@ export default function ArchitecturePage() {
   }, []);
 
   const filteredNodes = useMemo(() => {
-    if (!searchQuery.trim()) return nodes;
     return nodes.map((node) => {
-      const match =
-        (node.data.name || node.data.label).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const isSelected = selectedNode?.id === node.id;
+      const matchSearch = !searchQuery.trim() ||
+        node.data.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.data.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.data.category.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchCategory = categoryFilter === 'all' || node.data.category.toLowerCase() === categoryFilter;
+      const isVisible = matchSearch && matchCategory;
+
       return {
         ...node,
+        selected: isSelected,
         style: {
-          ...node.style,
-          opacity: match ? 1 : 0.25,
-          border: match 
-            ? (resolvedTheme === 'dark' ? '2px solid #FFFFFF' : '2px solid #090A0C')
-            : '1px solid var(--border)',
+          opacity: isVisible ? 1 : 0.2,
+          transition: 'opacity 0.2s ease',
         },
       };
     });
-  }, [nodes, searchQuery, resolvedTheme]);
+  }, [nodes, searchQuery, categoryFilter, selectedNode]);
+
+  const categories = ['all', 'frontend', 'api', 'services', 'database', 'config'];
 
   return (
     <div className="min-h-screen bg-surface-primary flex flex-col">
@@ -284,7 +356,7 @@ export default function ArchitecturePage() {
 
         <div className="flex-1 flex flex-col overflow-hidden h-[calc(100vh-3.5rem)]">
           {/* Header Bar */}
-          <div className="h-14 border-b border-border bg-surface-primary px-4 sm:px-6 flex items-center justify-between flex-shrink-0">
+          <div className="h-14 border-b border-border bg-surface-primary px-4 sm:px-6 flex items-center justify-between flex-shrink-0 gap-3">
             <div className="flex items-center gap-3">
               <Network className="h-4 w-4 text-txt-primary" />
               <h1 className="text-sm font-semibold text-txt-primary">Architecture Explorer</h1>
@@ -293,15 +365,33 @@ export default function ArchitecturePage() {
               </Badge>
             </div>
 
+            {/* Category filter pills */}
+            <div className="hidden lg:flex items-center gap-1 bg-surface-secondary p-1 rounded-lg border border-border">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategoryFilter(cat)}
+                  className={cn(
+                    "px-2.5 py-1 text-[11px] font-medium rounded-md capitalize transition-colors",
+                    categoryFilter === cat
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 font-semibold shadow-xs"
+                      : "text-txt-muted hover:text-txt-primary"
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
             <div className="flex items-center gap-2">
-              <div className="relative w-48 sm:w-60 hidden md:block">
+              <div className="relative w-44 sm:w-56 hidden md:block">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-txt-muted" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter modules..."
-                  className="input-field pl-8 py-1.5 text-xs"
+                  className="input-field pl-8 py-1.5 text-xs w-full"
                 />
               </div>
 
@@ -313,8 +403,8 @@ export default function ArchitecturePage() {
                 className="text-xs"
                 title="Re-synthesize architecture graph with AI"
               >
-                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${resynthesizing ? 'animate-spin' : ''}`} />
-                {resynthesizing ? 'Analyzing...' : 'Re-synthesize Graph'}
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", resynthesizing ? 'animate-spin' : '')} />
+                {resynthesizing ? 'Analyzing...' : 'Re-synthesize'}
               </Button>
             </div>
           </div>
@@ -340,6 +430,7 @@ export default function ArchitecturePage() {
                 <ReactFlow
                   nodes={filteredNodes}
                   edges={edges}
+                  nodeTypes={nodeTypes}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   onNodeClick={onNodeClick}
@@ -366,26 +457,35 @@ export default function ArchitecturePage() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={notionTransition}
-                  className="w-full lg:w-84 border-t lg:border-t-0 lg:border-l border-border bg-surface-primary p-5 flex flex-col justify-between overflow-y-auto max-h-80 lg:max-h-full shrink-0 shadow-lg"
+                  className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-border bg-surface-primary p-5 flex flex-col justify-between overflow-y-auto max-h-80 lg:max-h-full shrink-0 shadow-lg"
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-border">
                       <span className="section-label">Module Inspector</span>
-                      <Badge variant="default" className="text-[10px] capitalize font-mono">
-                        {selectedNode.category}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="default" className="text-[10px] capitalize font-mono">
+                          {selectedNode.category}
+                        </Badge>
+                        <button
+                          onClick={() => setSelectedNode(null)}
+                          className="p-1 rounded text-txt-muted hover:text-txt-primary hover:bg-surface-secondary transition-colors"
+                          title="Close inspector"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <h3 className="text-sm font-bold text-txt-primary">
-                        {selectedNode.name || selectedNode.label.split('\n')[0]}
+                        {selectedNode.name}
                       </h3>
-                      <p className="text-xs font-mono text-txt-muted mt-0.5 truncate">
-                        Primary path: {selectedNode.path}
+                      <p className="text-xs font-mono text-txt-muted mt-1 truncate">
+                        Primary entry: {selectedNode.path}
                       </p>
                     </div>
 
-                    <p className="text-xs text-txt-secondary leading-relaxed">
+                    <p className="text-xs text-txt-secondary leading-relaxed bg-surface-secondary p-3 rounded-lg border border-border">
                       {selectedNode.description}
                     </p>
 
@@ -411,13 +511,21 @@ export default function ArchitecturePage() {
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-border mt-4">
+                  <div className="pt-4 border-t border-border mt-4 space-y-2">
                     <Link
                       href={`/workspace/${repoId}/files?file=${encodeURIComponent(selectedNode.path)}`}
-                      className="btn-primary w-full text-xs"
+                      className="btn-primary w-full text-xs flex items-center justify-center gap-1.5 py-2"
                     >
-                      <FileCode2 className="h-3.5 w-3.5 mr-1" />
+                      <FileCode2 className="h-3.5 w-3.5" />
                       Inspect In File Explorer
+                    </Link>
+
+                    <Link
+                      href={`/workspace/${repoId}/chat?q=${encodeURIComponent(`Explain how the "${selectedNode.name}" module is implemented, what its main dependencies are, and how it interacts with the rest of the application.`)}`}
+                      className="btn-secondary w-full text-xs flex items-center justify-center gap-1.5 py-2"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Ask AI About This Module
                     </Link>
                   </div>
                 </motion.div>

@@ -15,28 +15,41 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { DependencyInfo, Repository } from '@/types';
 import { notionSpring, notionEase, staggerContainer, fadeUpItem } from '@/lib/animations/motion';
+import { getWorkspaceCache, setWorkspaceCache } from '@/lib/cache/workspace-cache';
 
 export default function DependenciesPage() {
   const params = useParams();
   const repoId = (params?.repositoryId as string) || '';
 
-  const [repository, setRepository] = useState<Repository | null>(null);
-  const [dependencies, setDependencies] = useState<DependencyInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = getWorkspaceCache(repoId);
+  const [repository, setRepository] = useState<Repository | null>(() => cached?.repository || null);
+  const [dependencies, setDependencies] = useState<DependencyInfo[]>(() => cached?.dependencies || []);
+  const [loading, setLoading] = useState(() => !cached?.dependencies || cached.dependencies.length === 0);
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'production' | 'development'>('all');
 
   useEffect(() => {
+    const c = getWorkspaceCache(repoId);
+    if (c?.dependencies && c.dependencies.length > 0) {
+      setDependencies(c.dependencies);
+      if (c.repository) setRepository(c.repository);
+      setLoading(false);
+    }
+
     Promise.all([
       fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
       fetch(`/api/repositories/${repoId}/dependencies`).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, depData]) => {
-        if (repoData?.repository) setRepository(repoData.repository);
+        if (repoData?.repository) {
+          setRepository(repoData.repository);
+          setWorkspaceCache(repoId, { repository: repoData.repository });
+        }
         if (depData?.dependencies && Array.isArray(depData.dependencies)) {
           setDependencies(depData.dependencies);
+          setWorkspaceCache(repoId, { dependencies: depData.dependencies });
         }
       })
       .catch((err) => {
