@@ -257,22 +257,28 @@ export default function AskCodebasePage() {
                   {msg.role === 'assistant' && (
                     <div className="flex items-center justify-between pt-1 text-[10px] text-txt-muted">
                       <span>{msg.timestamp}</span>
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => handleCopy(msg.id, msg.content)}
-                        className="hover:text-txt-primary flex items-center gap-1"
+                        className="hover:text-txt-primary flex items-center gap-1 transition-colors"
                       >
                         {copiedId === msg.id ? (
-                          <>
-                            <Check className="h-3 w-3 text-status-success" />
+                          <motion.span 
+                            initial={{ scale: 0.8 }} 
+                            animate={{ scale: 1 }} 
+                            className="flex items-center gap-1 text-status-success font-medium"
+                          >
+                            <Check className="h-3 w-3" />
                             Copied
-                          </>
+                          </motion.span>
                         ) : (
                           <>
                             <Copy className="h-3 w-3" />
                             Copy
                           </>
                         )}
-                      </button>
+                      </motion.button>
                     </div>
                   )}
                 </div>
@@ -294,9 +300,13 @@ export default function AskCodebasePage() {
                 <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-white">
                   <Bot className="h-4 w-4" />
                 </div>
-                <div className="card bg-surface-primary p-4 space-y-2 text-xs text-txt-secondary flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-txt-primary animate-pulse" />
-                  Searching code chunks and synthesizing response...
+                <div className="card bg-surface-primary p-3.5 space-y-1 text-xs text-txt-secondary flex items-center gap-3 shadow-sm border-zinc-700/60">
+                  <div className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-100 animate-dot-1" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-100 animate-dot-2" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-100 animate-dot-3" />
+                  </div>
+                  <span className="font-mono text-[11px] text-txt-muted">Searching AST index & synthesizing Gemini response...</span>
                 </div>
               </motion.div>
             )}

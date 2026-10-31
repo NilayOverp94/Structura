@@ -163,9 +163,20 @@ export default function DashboardPage() {
           </div>
 
           {loading ? (
-            <div className="card flex items-center justify-center py-12 text-txt-muted text-xs gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading workspaces...
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2].map((n) => (
+                <div key={n} className="card p-5 space-y-4 animate-pulse">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1.5">
+                      <div className="h-4 w-32 bg-surface-tertiary rounded" />
+                      <div className="h-3 w-20 bg-surface-tertiary/60 rounded" />
+                    </div>
+                    <div className="h-5 w-16 bg-surface-tertiary rounded-full" />
+                  </div>
+                  <div className="h-8 bg-surface-tertiary/40 rounded" />
+                  <div className="h-4 w-full bg-surface-tertiary/30 rounded" />
+                </div>
+              ))}
             </div>
           ) : repositories.length === 0 ? (
             <motion.div 
@@ -200,8 +211,8 @@ export default function DashboardPage() {
                     hidden: { opacity: 0, y: 14 },
                     show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: notionEase } },
                   }}
-                  whileHover={{ y: -3, transition: { duration: 0.18, ease: notionEase } }}
-                  className="card-hover flex flex-col justify-between p-5 space-y-4"
+                  whileHover={{ y: -4, scale: 1.008, transition: { duration: 0.18, ease: notionEase } }}
+                  className="card-hover flex flex-col justify-between p-5 space-y-4 shadow-sm hover:shadow-xl hover:shadow-black/20 hover:border-zinc-500 transition-all duration-200"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2">
@@ -213,21 +224,29 @@ export default function DashboardPage() {
                           >
                             {repo.name}
                           </Link>
-                          <Badge variant="success">Indexed</Badge>
+                          <Badge variant="success" className="inline-flex items-center gap-1.5">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                            </span>
+                            Indexed
+                          </Badge>
                         </div>
                         <p className="text-xs text-txt-muted font-mono mt-0.5">{repo.owner}</p>
                       </div>
-                      <a
+                      <motion.a
                         href={repo.github_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1 rounded text-txt-muted hover:text-txt-primary"
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="p-1.5 rounded-md text-txt-muted hover:text-txt-primary hover:bg-surface-tertiary transition-colors"
                       >
                         <ExternalLink className="h-4 w-4" />
-                      </a>
+                      </motion.a>
                     </div>
 
-                    <p className="text-xs text-txt-secondary mt-3 line-clamp-2">
+                    <p className="text-xs text-txt-secondary mt-3 line-clamp-2 leading-relaxed">
                       {repo.description || 'No description provided.'}
                     </p>
                   </div>
@@ -243,10 +262,10 @@ export default function DashboardPage() {
 
                     <Link
                       href={`/workspace/${repo.id}`}
-                      className="inline-flex items-center gap-1 text-txt-primary hover:underline font-medium"
+                      className="inline-flex items-center gap-1 text-txt-primary hover:underline font-medium group"
                     >
                       Open Workspace
-                      <ArrowRight className="h-3 w-3" />
+                      <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
                     </Link>
                   </div>
                 </motion.div>

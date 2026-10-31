@@ -239,14 +239,27 @@ function FileExplorerContent() {
                       <Sparkles className="h-3 w-3 mr-1" />
                       Explain File
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopyCode}
-                      className="text-xs h-8"
-                    >
-                      {copied ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopyCode}
+                        className="text-xs h-8"
+                      >
+                        {copied ? (
+                          <motion.span 
+                            initial={{ scale: 0.8 }} 
+                            animate={{ scale: 1 }} 
+                            className="flex items-center gap-1 text-status-success font-medium"
+                          >
+                            <Check className="h-3 w-3" />
+                            Copied
+                          </motion.span>
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </motion.div>
                   </div>
                 </div>
 
