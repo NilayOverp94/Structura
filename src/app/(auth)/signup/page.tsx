@@ -44,6 +44,12 @@ function SignupForm() {
         },
       });
 
+      const uName = username.trim() || cleanEmail.split('@')[0];
+      try {
+        localStorage.setItem('structura_username', uName);
+        localStorage.setItem('structura_user_email', cleanEmail);
+      } catch {}
+
       if (!signUpError && (signUpData?.session || signUpData?.user)) {
         if (signUpData.session) {
           window.location.href = redirect;

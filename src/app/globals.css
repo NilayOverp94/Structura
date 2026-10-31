@@ -110,16 +110,19 @@
 }
 
 /* React Flow Controls & Minimap styling (High Contrast in both Dark & Light themes) */
-.react-flow__controls {
+html body .react-flow__controls,
+html body .react-flow__controls.react-flow__controls {
   border: 1px solid var(--border) !important;
   border-radius: 8px !important;
   overflow: hidden !important;
   background: var(--surface-secondary) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
-.react-flow__controls-button {
+html body .react-flow__controls-button,
+html body .react-flow__controls .react-flow__controls-button {
   background: var(--surface-secondary) !important;
+  border: none !important;
   border-bottom: 1px solid var(--border) !important;
   width: 28px !important;
   height: 28px !important;
@@ -129,19 +132,66 @@
   transition: background-color 0.15s ease !important;
 }
 
-.react-flow__controls-button:last-child {
+html body .react-flow__controls-button:last-child,
+html body .react-flow__controls .react-flow__controls-button:last-child {
   border-bottom: none !important;
 }
 
-.react-flow__controls-button:hover {
+html body .react-flow__controls-button:hover,
+html body .react-flow__controls .react-flow__controls-button:hover {
   background: var(--surface-tertiary) !important;
 }
 
-.react-flow__controls-button svg {
+html body .react-flow__controls-button svg,
+html body .react-flow__controls .react-flow__controls-button svg {
   fill: var(--txt-primary) !important;
   stroke: var(--txt-primary) !important;
   max-width: 14px !important;
   max-height: 14px !important;
+}
+
+/* Explicit Dark Mode Controls High Contrast */
+html.dark body .react-flow__controls,
+html body.dark .react-flow__controls {
+  background: #18181b !important;
+  border: 1px solid #27272a !important;
+}
+
+html.dark body .react-flow__controls-button,
+html body.dark .react-flow__controls-button {
+  background: #18181b !important;
+  border-bottom: 1px solid #27272a !important;
+}
+
+html.dark body .react-flow__controls-button:hover,
+html body.dark .react-flow__controls-button:hover {
+  background: #27272a !important;
+}
+
+html.dark body .react-flow__controls-button svg,
+html body.dark .react-flow__controls-button svg {
+  fill: #fafafa !important;
+  stroke: #fafafa !important;
+}
+
+/* Explicit Light Mode Controls High Contrast */
+html:not(.dark) body .react-flow__controls {
+  background: #ffffff !important;
+  border: 1px solid #e4e4e7 !important;
+}
+
+html:not(.dark) body .react-flow__controls-button {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e4e4e7 !important;
+}
+
+html:not(.dark) body .react-flow__controls-button:hover {
+  background: #f4f4f5 !important;
+}
+
+html:not(.dark) body .react-flow__controls-button svg {
+  fill: #18181b !important;
+  stroke: #18181b !important;
 }
 
 .react-flow__minimap {

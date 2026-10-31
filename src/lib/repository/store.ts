@@ -6,6 +6,7 @@ import { detectTechnologies } from '@/lib/analysis/technology-detector';
 import { chunkFileContent } from '@/lib/analysis/chunker';
 import { generateJSON, hasGeminiKey } from '@/lib/gemini/client';
 import { ARCHITECTURE_PROMPT } from '@/lib/rag/prompts';
+import { buildModularArchitecture } from '@/lib/analysis/architecture-synthesizer';
 
 interface CachedRepositoryData {
   repository: Repository;
@@ -119,18 +120,17 @@ export class RepositoryStore {
       updated_at: new Date().toISOString(),
     };
 
-    // Fetch repository files from GitHub
+    // Fetch repository files from GitHub in high-speed parallel batches
     let fetchedFiles: RepositoryFile[] = [];
     try {
       const rawTree = await githubClient.getTree(owner, repoName, meta.default_branch);
       const filteredTree = filterRepositoryFiles(rawTree);
-      const prioritized = prioritizeFiles(filteredTree).slice(0, 25);
+      const prioritized = prioritizeFiles(filteredTree).slice(0, 30);
 
-      for (let i = 0; i < prioritized.length; i++) {
-        const item = prioritized[i];
+      const filePromises = prioritized.map(async (item, i) => {
         try {
           const content = await githubClient.getFileContent(owner, repoName, item.path, meta.default_branch);
-          fetchedFiles.push({
+          return {
             id: `f-${id}-${i}`,
             repository_id: id,
             file_path: item.path,
@@ -140,11 +140,14 @@ export class RepositoryStore {
             blob_sha: null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          });
+          } as RepositoryFile;
         } catch {
-          // Skip unreadable
+          return null;
         }
-      }
+      });
+
+      const settled = await Promise.all(filePromises);
+      fetchedFiles = settled.filter((f): f is RepositoryFile => f !== null);
     } catch (err) {
       console.warn('Live tree fetch error in recovery:', err);
     }
@@ -152,21 +155,14 @@ export class RepositoryStore {
     const detectedTech = detectTechnologies(fetchedFiles.map(f => ({ path: f.file_path, content: f.content })));
 
     let overview = `${full_name} is an open-source project written primarily in ${lang}.`;
-    let architectureLayers: RepositoryInsights['architecture']['layers'] = [
-      {
-        name: 'Entry & Core Logic',
-        description: 'Primary application structure and source files.',
-        category: 'backend',
-        files: fetchedFiles.slice(0, 5).map(f => f.file_path),
-      },
-    ];
+    let architectureLayers = buildModularArchitecture(full_name, fetchedFiles);
 
     if (hasGeminiKey() && fetchedFiles.length > 0) {
       try {
-        const summaryFiles = fetchedFiles.slice(0, 6).map(f => `File: ${f.file_path}\n${f.content.slice(0, 400)}`).join('\n\n');
+        const summaryFiles = fetchedFiles.slice(0, 10).map(f => `File: ${f.file_path}\n${f.content.slice(0, 400)}`).join('\n\n');
         const prompt = `Repository: ${full_name}\nDescription: ${meta.description || ''}\n\nFiles:\n${summaryFiles}`;
         const aiInsights = await generateJSON<any>(prompt, ARCHITECTURE_PROMPT);
-        if (aiInsights?.architecture?.layers) {
+        if (aiInsights?.architecture?.layers && Array.isArray(aiInsights.architecture.layers) && aiInsights.architecture.layers.length >= 2) {
           architectureLayers = aiInsights.architecture.layers;
         }
         if (aiInsights?.overview) {
@@ -295,7 +291,19 @@ export class RepositoryStore {
    */
   static async getInsights(id: string): Promise<RepositoryInsights | null> {
     const cached = repoCache.get(id) || repoCache.get(id.toLowerCase());
-    if (cached && cached.insights) return cached.insights;
+    if (cached && cached.insights) {
+      // If cached insights has <= 1 layer, auto-upgrade with multi-layer topology
+      if (
+        !cached.insights.architecture?.layers ||
+        cached.insights.architecture.layers.length <= 1
+      ) {
+        cached.insights.architecture.layers = buildModularArchitecture(
+          cached.repository?.full_name || id,
+          cached.files || []
+        );
+      }
+      return cached.insights;
+    }
 
     // Check Supabase
     try {

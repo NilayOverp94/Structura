@@ -17,14 +17,29 @@ interface AppHeaderProps {
 export function AppHeader({ userEmail }: AppHeaderProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [profileName, setProfileName] = useState<string>('');
-  const [profileEmail, setProfileEmail] = useState<string>('');
+  const [profileName, setProfileName] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      const stored = localStorage.getItem('structura_username');
+      if (stored) return stored;
+      const prefs = getUserPreferences();
+      if (prefs?.displayName && prefs.displayName !== 'Developer') return prefs.displayName;
+    } catch {}
+    return '';
+  });
+  const [profileEmail, setProfileEmail] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    try {
+      return localStorage.getItem('structura_user_email') || '';
+    } catch {}
+    return '';
+  });
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     try {
       const prefs = getUserPreferences();
-      if (prefs.displayName && prefs.displayName !== 'Developer') {
+      if (prefs?.displayName && prefs.displayName !== 'Developer') {
         setProfileName(prefs.displayName);
       }
 
@@ -33,11 +48,22 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
         if (user) {
           const emailVal = user.email || '';
           setProfileEmail(emailVal);
+          try {
+            localStorage.setItem('structura_user_email', emailVal);
+          } catch {}
+
           const metaName = user.user_metadata?.username || user.user_metadata?.display_name || user.user_metadata?.name;
           if (metaName) {
             setProfileName(metaName);
+            try {
+              localStorage.setItem('structura_username', metaName);
+            } catch {}
           } else if (emailVal) {
-            setProfileName(emailVal.split('@')[0]);
+            const derived = emailVal.split('@')[0];
+            setProfileName(derived);
+            try {
+              localStorage.setItem('structura_username', derived);
+            } catch {}
           }
         }
       }).catch(() => {});
@@ -61,6 +87,10 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
 
   const handleSignOut = async () => {
     try {
+      localStorage.removeItem('structura_username');
+      localStorage.removeItem('structura_user_email');
+    } catch {}
+    try {
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch {
@@ -69,8 +99,8 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
     window.location.href = '/login';
   };
 
-  const displayName = profileName || userEmail || profileEmail || 'Developer';
-  const initial = displayName.trim().charAt(0).toUpperCase() || 'N';
+  const displayName = profileName || userEmail || profileEmail || 'Nilay';
+  const initial = (displayName.trim().charAt(0) || 'N').toUpperCase();
 
   return (
     <header className="sticky top-0 z-40 h-14 border-b border-border bg-surface-primary/95 backdrop-blur px-4 sm:px-6 flex items-center justify-between">

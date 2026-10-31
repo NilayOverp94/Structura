@@ -6,7 +6,7 @@ class GitHubClient {
   private baseUrl: string;
 
   constructor() {
-    this.token = process.env.GITHUB_TOKEN;
+    this.token = process.env.GITHUB_TOKEN || process.env.NEXT_PUBLIC_GITHUB_TOKEN;
     this.baseUrl = GITHUB_CONFIG.apiBase;
   }
 

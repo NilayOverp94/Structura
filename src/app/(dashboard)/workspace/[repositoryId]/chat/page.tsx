@@ -266,8 +266,8 @@ export default function AskCodebasePage() {
                 </div>
 
                 {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-zinc-100 shadow-sm">
-                    <User className="h-4 w-4" />
+                  <div className="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-zinc-800 border border-zinc-700/80 flex items-center justify-center flex-shrink-0 text-white dark:text-zinc-100 font-bold text-xs shadow-sm">
+                    {(typeof window !== 'undefined' ? (localStorage.getItem('structura_username') || prefs?.displayName || 'N') : 'N').trim().charAt(0).toUpperCase()}
                   </div>
                 )}
               </div>

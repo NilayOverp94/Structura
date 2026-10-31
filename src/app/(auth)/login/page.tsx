@@ -67,6 +67,12 @@ function LoginForm() {
 
       if (signInError) throw signInError;
 
+      try {
+        const u = cleanEmail.split('@')[0];
+        localStorage.setItem('structura_username', u);
+        localStorage.setItem('structura_user_email', cleanEmail);
+      } catch {}
+
       let destination = redirect;
       if (urlParam && !destination.includes('url=')) {
         destination = `${destination}${destination.includes('?') ? '&' : '?'}url=${encodeURIComponent(urlParam)}`;

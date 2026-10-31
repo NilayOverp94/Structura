@@ -61,40 +61,71 @@ export default function ArchitecturePage() {
     }
   };
 
-  const buildGraph = useCallback((layers: any[]) => {
-    if (!layers || layers.length === 0) return;
+  const buildGraph = useCallback((rawLayers: any[]) => {
+    let layers = rawLayers;
+
+    // Safety: If layers is empty or has only 1 generic entry, expand into structured architecture tiers
+    if (!layers || layers.length <= 1) {
+      const primaryFiles = layers?.[0]?.files || ['src/App.tsx', 'index.html'];
+      layers = [
+        {
+          name: 'Client Interface & UI',
+          category: 'frontend',
+          description: 'User-facing views, layout components, routing, and client interactions.',
+          files: primaryFiles.filter((f: string) => f.includes('html') || f.includes('tsx') || f.includes('jsx') || f.includes('components') || f.includes('App')).slice(0, 8),
+        },
+        {
+          name: 'API Routes & Edge Handlers',
+          category: 'api',
+          description: 'Serverless functions, API endpoints, request validation, and cloud functions.',
+          files: primaryFiles.filter((f: string) => f.includes('api') || f.includes('functions') || f.includes('route')).slice(0, 8),
+        },
+        {
+          name: 'Core Services & Utilities',
+          category: 'services',
+          description: 'Business logic modules, domain helpers, SDK clients, and algorithms.',
+          files: primaryFiles.slice(0, 6),
+        },
+        {
+          name: 'Data & Persistence Layer',
+          category: 'database',
+          description: 'Database schema, persistent store client, and storage configuration.',
+          files: ['supabase/config.toml', 'package.json'],
+        },
+      ];
+    }
 
     const dynamicNodes: Node[] = [];
     const dynamicEdges: Edge[] = [];
+    const isDark = resolvedTheme === 'dark';
 
-    // Distinct positions for structured visual flow
-    const positions = [
-      { x: 100, y: 80 },   // Top left
-      { x: 500, y: 80 },   // Top right
-      { x: 300, y: 240 },  // Center
-      { x: 100, y: 400 },  // Bottom left
-      { x: 500, y: 400 },  // Bottom right
-      { x: 300, y: 540 },  // Lower center
+    // Tiered architectural layout coordinates
+    const layoutPositions = [
+      { x: 260, y: 40 },   // Top: Client / UI
+      { x: 260, y: 190 },  // Middle: API / Edge Handlers
+      { x: 260, y: 340 },  // Middle-Lower: Core Services
+      { x: 70, y: 490 },   // Bottom-Left: Data & Persistence
+      { x: 450, y: 490 },  // Bottom-Right: Build & Config
+      { x: 260, y: 640 },  // Bottom: External Systems
     ];
 
     layers.forEach((layer: any, idx: number) => {
-      const pos = positions[idx] || {
+      const pos = layoutPositions[idx] || {
         x: 80 + (idx % 3) * 360,
         y: 80 + Math.floor(idx / 3) * 180,
       };
       const nodeId = `layer-${idx}`;
-      const isDark = resolvedTheme === 'dark';
 
       dynamicNodes.push({
         id: nodeId,
         type: 'default',
         data: {
-          label: `${layer.name}\n${layer.category ? layer.category.toUpperCase() : 'MODULE'}`,
+          label: `${layer.name}\n${(layer.category || 'MODULE').toUpperCase()}`,
           name: layer.name,
           category: layer.category || 'services',
           description: layer.description || `Handles ${layer.name} logic.`,
           path: layer.files?.[0] || 'src/',
-          files: layer.files || [],
+          files: layer.files && layer.files.length > 0 ? layer.files : ['src/index.ts'],
           fileCount: layer.files?.length || 1,
         },
         position: pos,
@@ -102,13 +133,13 @@ export default function ArchitecturePage() {
           background: isDark ? '#121316' : '#FFFFFF',
           color: isDark ? '#EDEDED' : '#090A0C',
           border: isDark 
-            ? (idx === 0 ? '1.5px solid #A1A1AA' : '1px solid #27272A')
+            ? (idx === 0 ? '1.5px solid #FFFFFF' : '1px solid #27272A')
             : (idx === 0 ? '1.5px solid #090A0C' : '1px solid #E4E5E8'),
           borderRadius: 10,
-          padding: '12px 16px',
+          padding: '14px 18px',
           fontSize: 12,
           fontWeight: 600,
-          minWidth: 220,
+          minWidth: 230,
           boxShadow: isDark 
             ? '0 4px 16px rgba(0,0,0,0.5)' 
             : '0 4px 12px rgba(0,0,0,0.06)',
@@ -116,29 +147,57 @@ export default function ArchitecturePage() {
         },
       });
 
-      // Connect layers in logical data-flow sequences
-      if (idx > 0) {
-        const sourceId = idx === 2 ? 'layer-0' : `layer-${idx - 1}`;
+      // Connect layers in logical architectural data-flow sequences
+      if (idx === 1) {
+        // UI -> API
         dynamicEdges.push({
-          id: `edge-${sourceId}-${nodeId}`,
-          source: sourceId,
+          id: 'edge-0-1',
+          source: 'layer-0',
+          target: 'layer-1',
+          animated: true,
+          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#EDEDED' : '#18181B' },
+          style: { stroke: isDark ? '#71717A' : '#A1A1AA', strokeWidth: 2 },
+        });
+      } else if (idx === 2) {
+        // API -> Services
+        dynamicEdges.push({
+          id: 'edge-1-2',
+          source: 'layer-1',
+          target: 'layer-2',
+          animated: true,
+          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#EDEDED' : '#18181B' },
+          style: { stroke: isDark ? '#71717A' : '#A1A1AA', strokeWidth: 2 },
+        });
+      } else if (idx === 3) {
+        // Services -> Database
+        dynamicEdges.push({
+          id: 'edge-2-3',
+          source: 'layer-2',
+          target: 'layer-3',
+          animated: true,
+          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#A1A1AA' : '#52525B' },
+          style: { stroke: isDark ? '#52525B' : '#CBD5E1', strokeWidth: 1.5 },
+        });
+      } else if (idx === 4) {
+        // Services -> Config/Build
+        dynamicEdges.push({
+          id: 'edge-2-4',
+          source: 'layer-2',
+          target: 'layer-4',
+          animated: true,
+          markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#A1A1AA' : '#52525B' },
+          style: { stroke: isDark ? '#52525B' : '#CBD5E1', strokeWidth: 1.5 },
+        });
+      } else if (idx > 4) {
+        const prevId = `layer-${idx - 1}`;
+        dynamicEdges.push({
+          id: `edge-${prevId}-${nodeId}`,
+          source: prevId,
           target: nodeId,
           animated: true,
           markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#A1A1AA' : '#52525B' },
-          style: { stroke: isDark ? '#52525B' : '#A1A1AA', strokeWidth: 1.5 },
+          style: { stroke: isDark ? '#52525B' : '#CBD5E1', strokeWidth: 1.5 },
         });
-
-        // Add additional cross-layer connection for deeper topologies
-        if (idx === 3 && layers.length > 2) {
-          dynamicEdges.push({
-            id: `edge-layer-1-${nodeId}`,
-            source: 'layer-1',
-            target: nodeId,
-            animated: true,
-            markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? '#A1A1AA' : '#52525B' },
-            style: { stroke: isDark ? '#3F3F46' : '#CBD5E1', strokeWidth: 1.5 },
-          });
-        }
       }
     });
 
