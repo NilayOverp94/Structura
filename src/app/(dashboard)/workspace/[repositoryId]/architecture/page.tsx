@@ -49,8 +49,6 @@ export default function ArchitecturePage() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<Node['data'] | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<any | null>(null);
-  const [selectedLayer, setSelectedLayer] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [resynthesizing, setResynthesizing] = useState(false);
@@ -255,38 +253,27 @@ export default function ArchitecturePage() {
 
   const onNodeClick = useCallback((_: any, node: Node) => {
     setSelectedNode(node.data);
-    setSelectedEdge(null);
-  }, []);
-
-  const onEdgeClick = useCallback((_: any, edge: Edge) => {
-    setSelectedEdge(edge);
-    setSelectedNode(null);
   }, []);
 
   const filteredNodes = useMemo(() => {
+    if (!searchQuery.trim()) return nodes;
     return nodes.map((node) => {
-      const matchSearch = !searchQuery.trim() ||
+      const match =
         (node.data.name || node.data.label).toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.data.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
         node.data.category.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchLayer = selectedLayer === 'all' || node.data.category === selectedLayer;
-      const isVisible = matchSearch && matchLayer;
-
       return {
         ...node,
         style: {
           ...node.style,
-          opacity: isVisible ? 1 : 0.2,
-          border: isVisible 
-            ? (node.data === selectedNode
-                ? (resolvedTheme === 'dark' ? '2.5px solid #FFFFFF' : '2.5px solid #090A0C')
-                : node.style?.border)
-            : '1px dashed var(--border)',
+          opacity: match ? 1 : 0.25,
+          border: match 
+            ? (resolvedTheme === 'dark' ? '2px solid #FFFFFF' : '2px solid #090A0C')
+            : '1px solid var(--border)',
         },
       };
     });
-  }, [nodes, searchQuery, selectedLayer, selectedNode, resolvedTheme]);
+  }, [nodes, searchQuery, resolvedTheme]);
 
   return (
     <div className="min-h-screen bg-surface-primary flex flex-col">
@@ -297,7 +284,7 @@ export default function ArchitecturePage() {
 
         <div className="flex-1 flex flex-col overflow-hidden h-[calc(100vh-3.5rem)]">
           {/* Header Bar */}
-          <div className="h-14 border-b border-border bg-surface-primary px-4 sm:px-6 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
+          <div className="h-14 border-b border-border bg-surface-primary px-4 sm:px-6 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-3">
               <Network className="h-4 w-4 text-txt-primary" />
               <h1 className="text-sm font-semibold text-txt-primary">Architecture Explorer</h1>
@@ -306,32 +293,15 @@ export default function ArchitecturePage() {
               </Badge>
             </div>
 
-            {/* Layer Filter Pills */}
-            <div className="hidden lg:flex items-center gap-1 bg-surface-secondary p-1 rounded-lg border border-border text-xs">
-              {(['all', 'frontend', 'api', 'services', 'database', 'config'] as const).map((layer) => (
-                <button
-                  key={layer}
-                  onClick={() => setSelectedLayer(layer)}
-                  className={`px-2.5 py-1 rounded text-xs capitalize transition-colors ${
-                    selectedLayer === layer
-                      ? 'bg-zinc-800 text-white font-medium shadow-sm'
-                      : 'text-txt-secondary hover:text-txt-primary'
-                  }`}
-                >
-                  {layer}
-                </button>
-              ))}
-            </div>
-
             <div className="flex items-center gap-2">
-              <div className="relative w-40 sm:w-52">
+              <div className="relative w-48 sm:w-60 hidden md:block">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-txt-muted" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter modules..."
-                  className="input-field pl-8 py-1 text-xs"
+                  className="input-field pl-8 py-1.5 text-xs"
                 />
               </div>
 
@@ -340,11 +310,11 @@ export default function ArchitecturePage() {
                 size="sm"
                 onClick={handleResynthesize}
                 disabled={resynthesizing}
-                className="text-xs h-8"
+                className="text-xs"
                 title="Re-synthesize architecture graph with AI"
               >
                 <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${resynthesizing ? 'animate-spin' : ''}`} />
-                {resynthesizing ? 'Analyzing...' : 'Re-synthesize'}
+                {resynthesizing ? 'Analyzing...' : 'Re-synthesize Graph'}
               </Button>
             </div>
           </div>
@@ -373,7 +343,6 @@ export default function ArchitecturePage() {
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   onNodeClick={onNodeClick}
-                  onEdgeClick={onEdgeClick}
                   fitView
                   minZoom={0.2}
                   maxZoom={1.5}
@@ -391,52 +360,6 @@ export default function ArchitecturePage() {
 
             {/* Component Detail Sidebar */}
             <AnimatePresence>
-              {selectedEdge && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={notionTransition}
-                  className="w-full lg:w-84 border-t lg:border-t-0 lg:border-l border-border bg-surface-primary p-5 flex flex-col justify-between overflow-y-auto max-h-80 lg:max-h-full shrink-0 shadow-lg"
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between pb-3 border-b border-border">
-                      <span className="section-label">Relationship Details</span>
-                      <Badge variant="default" className="text-[10px] font-mono">
-                        {selectedEdge.animated ? 'Architectural Flow' : 'Confirmed Import'}
-                      </Badge>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-bold text-txt-primary">
-                        {selectedEdge.source} → {selectedEdge.target}
-                      </h3>
-                      <p className="text-xs text-txt-muted mt-1 font-mono">
-                        Connection: Inter-module dependency
-                      </p>
-                    </div>
-
-                    <div className="p-3 rounded-lg bg-surface-secondary border border-border text-xs text-txt-secondary leading-relaxed space-y-1">
-                      <p className="font-semibold text-txt-primary">Evidence & Topology:</p>
-                      <p>
-                        This link demonstrates directional dependency flow where {selectedEdge.source} delegates requests, calls exported APIs, or consumes services declared in {selectedEdge.target}.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-border mt-4">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setSelectedEdge(null)}
-                      className="w-full text-xs"
-                    >
-                      Clear Selection
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-
               {selectedNode && (
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
@@ -448,14 +371,9 @@ export default function ArchitecturePage() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between pb-3 border-b border-border">
                       <span className="section-label">Module Inspector</span>
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="default" className="text-[10px] capitalize font-mono">
-                          {selectedNode.category}
-                        </Badge>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
-                          Confirmed
-                        </span>
-                      </div>
+                      <Badge variant="default" className="text-[10px] capitalize font-mono">
+                        {selectedNode.category}
+                      </Badge>
                     </div>
 
                     <div>

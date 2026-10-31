@@ -110,6 +110,7 @@
 }
 
 /* React Flow Controls & Minimap styling (High Contrast in both Dark & Light themes) */
+.react-flow__controls,
 html body .react-flow__controls,
 html body .react-flow__controls.react-flow__controls {
   border: 1px solid var(--border) !important;
@@ -119,6 +120,8 @@ html body .react-flow__controls.react-flow__controls {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
+.react-flow__controls-button,
+.react-flow__controls button,
 html body .react-flow__controls-button,
 html body .react-flow__controls .react-flow__controls-button {
   background: var(--surface-secondary) !important;
@@ -132,16 +135,22 @@ html body .react-flow__controls .react-flow__controls-button {
   transition: background-color 0.15s ease !important;
 }
 
+.react-flow__controls-button:last-child,
+.react-flow__controls button:last-child,
 html body .react-flow__controls-button:last-child,
 html body .react-flow__controls .react-flow__controls-button:last-child {
   border-bottom: none !important;
 }
 
+.react-flow__controls-button:hover,
+.react-flow__controls button:hover,
 html body .react-flow__controls-button:hover,
 html body .react-flow__controls .react-flow__controls-button:hover {
   background: var(--surface-tertiary) !important;
 }
 
+.react-flow__controls-button svg,
+.react-flow__controls button svg,
 html body .react-flow__controls-button svg,
 html body .react-flow__controls .react-flow__controls-button svg {
   fill: var(--txt-primary) !important;
@@ -151,44 +160,77 @@ html body .react-flow__controls .react-flow__controls-button svg {
 }
 
 /* Explicit Dark Mode Controls High Contrast */
+.dark .react-flow__controls,
+html.dark .react-flow__controls,
 html.dark body .react-flow__controls,
 html body.dark .react-flow__controls {
   background: #18181b !important;
+  background-color: #18181b !important;
   border: 1px solid #27272a !important;
 }
 
+.dark .react-flow__controls-button,
+.dark .react-flow__controls button,
+html.dark .react-flow__controls-button,
+html.dark .react-flow__controls button,
 html.dark body .react-flow__controls-button,
 html body.dark .react-flow__controls-button {
   background: #18181b !important;
+  background-color: #18181b !important;
   border-bottom: 1px solid #27272a !important;
+  color: #fafafa !important;
 }
 
+.dark .react-flow__controls-button:hover,
+.dark .react-flow__controls button:hover,
+html.dark .react-flow__controls-button:hover,
+html.dark .react-flow__controls button:hover,
 html.dark body .react-flow__controls-button:hover,
 html body.dark .react-flow__controls-button:hover {
   background: #27272a !important;
+  background-color: #27272a !important;
 }
 
+.dark .react-flow__controls-button svg,
+.dark .react-flow__controls button svg,
+.dark .react-flow__controls-button svg path,
+.dark .react-flow__controls button svg path,
 html.dark body .react-flow__controls-button svg,
-html body.dark .react-flow__controls-button svg {
+html body.dark .react-flow__controls-button svg,
+html.dark .react-flow__controls-button svg,
+html.dark .react-flow__controls button svg {
   fill: #fafafa !important;
   stroke: #fafafa !important;
 }
 
 /* Explicit Light Mode Controls High Contrast */
+:root:not(.dark) .react-flow__controls,
 html:not(.dark) body .react-flow__controls {
   background: #ffffff !important;
+  background-color: #ffffff !important;
   border: 1px solid #e4e4e7 !important;
 }
 
+:root:not(.dark) .react-flow__controls-button,
+:root:not(.dark) .react-flow__controls button,
 html:not(.dark) body .react-flow__controls-button {
   background: #ffffff !important;
+  background-color: #ffffff !important;
   border-bottom: 1px solid #e4e4e7 !important;
+  color: #18181b !important;
 }
 
+:root:not(.dark) .react-flow__controls-button:hover,
+:root:not(.dark) .react-flow__controls button:hover,
 html:not(.dark) body .react-flow__controls-button:hover {
   background: #f4f4f5 !important;
+  background-color: #f4f4f5 !important;
 }
 
+:root:not(.dark) .react-flow__controls-button svg,
+:root:not(.dark) .react-flow__controls button svg,
+:root:not(.dark) .react-flow__controls-button svg path,
+:root:not(.dark) .react-flow__controls button svg path,
 html:not(.dark) body .react-flow__controls-button svg {
   fill: #18181b !important;
   stroke: #18181b !important;

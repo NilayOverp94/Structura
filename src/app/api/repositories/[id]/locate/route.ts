@@ -4,7 +4,6 @@ import { hybridSearch } from '@/lib/rag/search';
 import { generateJSON, hasGeminiKey } from '@/lib/gemini/client';
 import { LOCATE_PROMPT } from '@/lib/rag/prompts';
 import { RepositoryStore } from '@/lib/repository/store';
-import { analyzeFile } from '@/lib/analysis/code-analyzer';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -38,55 +37,28 @@ export async function POST(
         const prompt = `Query: "${query}"\n\nIndexed Code Context:\n${context}`;
         const structured = await generateJSON<any>(prompt, LOCATE_PROMPT, clientKey);
 
-        if (structured?.results && Array.isArray(structured.results)) {
-          // Ensure all results have the recommendation flag
-          const formatted = structured.results.map((r: any) => ({
-            ...r,
-            is_recommendation: true,
-          }));
-          return NextResponse.json({
-            ...structured,
-            results: formatted,
-          });
+        if (structured?.results) {
+          return NextResponse.json(structured);
         }
       } catch (e) {
         console.warn('Gemini locate fallback:', e);
       }
     }
 
-    // Direct search result mapping with AST symbol enrichment
+    // Direct search result mapping
     if (searchResults.length > 0) {
-      const directResults = searchResults.slice(0, 6).map((r, idx) => {
-        const matchedFile = files.find(f => f.file_path === r.file_path);
-        let functions: string[] = [];
-        let related: string[] = [];
-
-        if (matchedFile) {
-          const fa = analyzeFile(matchedFile);
-          functions = fa.symbols.slice(0, 4).map(s => `${s.name} (${s.kind})`);
-          related = fa.imports.filter(i => !i.isExternal).map(i => i.source);
-        }
-
-        return {
-          file_path: r.file_path,
-          relevance: idx === 0 ? 'directly_relevant' : 'related',
-          why_relevant: `Matched relevant source code and logic for "${query}".`,
-          important_functions: functions,
-          related_modules: related.slice(0, 3),
-          suggested_order: idx + 1,
-          code_snippet: r.chunk.content.slice(0, 250),
-          implementation_approach: `Inspect and modify relevant declarations in \`${r.file_path}\`.`,
-          potential_risks: [
-            `Verify callers importing \`${r.file_path}\` remain compatible.`,
-            `Ensure unit tests covering this module are updated.`,
-          ],
-          is_recommendation: true,
-        };
-      });
+      const directResults = searchResults.slice(0, 5).map((r, idx) => ({
+        file_path: r.file_path,
+        relevance: idx === 0 ? 'directly_relevant' : 'related',
+        why_relevant: `Matched relevant source code sections for "${query}".`,
+        important_functions: [],
+        related_modules: [],
+        suggested_order: idx + 1,
+        code_snippet: r.chunk.content.slice(0, 200),
+      }));
 
       return NextResponse.json({
-        summary: `Located ${directResults.length} matching source files and declarations for "${query}".`,
-        implementation_suggestions: `Review files in the suggested inspection order (1 to ${directResults.length}). Verify module boundaries before making changes.`,
+        summary: `Located ${directResults.length} matching source code sections in repository for "${query}".`,
         results: directResults,
       });
     }

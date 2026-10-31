@@ -212,13 +212,13 @@ export default function AskCodebasePage() {
                 <div
                   className={`space-y-3 rounded-xl p-4 text-xs leading-relaxed ${
                     msg.role === 'user'
-                      ? 'bg-zinc-900 dark:bg-zinc-800 text-zinc-100 border border-zinc-700/60 max-w-xl shadow-sm'
+                      ? 'bg-zinc-900 dark:bg-zinc-800 text-white border border-zinc-700/60 max-w-xl shadow-sm'
                       : 'card bg-surface-primary max-w-2xl'
                   }`}
                 >
                   <div
                     className={`whitespace-pre-line ${
-                      msg.role === 'user' ? 'text-zinc-100 font-normal' : 'text-txt-primary'
+                      msg.role === 'user' ? 'text-white font-medium' : 'text-txt-primary'
                     }`}
                   >
                     {msg.content}
@@ -237,7 +237,7 @@ export default function AskCodebasePage() {
                             whileHover={{ y: -2, transition: { duration: 0.15 } }}
                           >
                             <Link
-                              href={`/workspace/${repoId}/files?file=${encodeURIComponent(cite.file_path)}&line=${cite.start_line}`}
+                              href={`/workspace/${repoId}/files?file=${encodeURIComponent(cite.file_path)}`}
                               className="p-2 rounded bg-surface-secondary border border-border hover:border-zinc-500 transition-colors block text-left"
                             >
                               <div className="flex items-center gap-1.5 text-txt-primary font-mono text-[11px] truncate">

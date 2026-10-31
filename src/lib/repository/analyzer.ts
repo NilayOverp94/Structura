@@ -34,28 +34,27 @@ export class RepositoryAnalyzer {
     }
   }
 
-  async analyze(owner: string, repo: string, userId: string, clientKey?: string, targetBranch?: string): Promise<Repository> {
+  async analyze(owner: string, repo: string, userId: string, clientKey?: string): Promise<Repository> {
     try {
       // Stage 1: Connecting to GitHub
       this.updateProgress('connecting', 5, 'Connecting to GitHub API...');
       const meta = await githubClient.getRepository(owner, repo);
-      const activeBranch = targetBranch || meta.default_branch || 'main';
 
       // Stage 2: Fetching repository metadata
-      this.updateProgress('fetching_metadata', 15, `Fetching repository commit history on branch ${activeBranch}...`);
+      this.updateProgress('fetching_metadata', 15, 'Fetching repository commit history and branches...');
       let commitSha: string | null = null;
       try {
-        commitSha = await githubClient.getLatestCommitSha(owner, repo, activeBranch);
+        commitSha = await githubClient.getLatestCommitSha(owner, repo, meta.default_branch);
       } catch (e) {
         console.warn('Could not fetch commit SHA:', e);
       }
 
       // Stage 3: Fetching tree
-      this.updateProgress('fetching_tree', 25, `Scanning repository tree on ${activeBranch}...`);
+      this.updateProgress('fetching_tree', 25, 'Scanning repository tree...');
       let fetchedFiles: { path: string; content: string; language: string | null; size: number }[] = [];
 
       try {
-        const rawTree = await githubClient.getTree(owner, repo, activeBranch);
+        const rawTree = await githubClient.getTree(owner, repo, meta.default_branch);
         const filteredTree = filterRepositoryFiles(rawTree);
         const prioritized = prioritizeFiles(filteredTree).slice(0, 30); // Index top 30 key files
 
@@ -65,7 +64,7 @@ export class RepositoryAnalyzer {
         for (let i = 0; i < prioritized.length; i++) {
           const item = prioritized[i];
           try {
-            const content = await githubClient.getFileContent(owner, repo, item.path, activeBranch);
+            const content = await githubClient.getFileContent(owner, repo, item.path, meta.default_branch);
             const lang = detectLanguage(item.path);
             fetchedFiles.push({
               path: item.path,

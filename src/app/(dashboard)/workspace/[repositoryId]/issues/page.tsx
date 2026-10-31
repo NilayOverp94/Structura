@@ -178,66 +178,26 @@ export default function BugFeatureLocatorPage() {
                   </h2>
 
                   {results.map((res, idx) => (
-                    <div key={idx} className="card p-5 space-y-3.5 transition-colors">
-                      <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-border/60">
+                    <div key={idx} className="card p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2 truncate">
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-white font-bold border border-zinc-700">
-                            #{res.suggested_order || idx + 1}
-                          </span>
-                          <FileCode2 className="h-4 w-4 text-txt-primary flex-shrink-0" />
+                          <FileCode2 className="h-4 w-4 text-txt-muted flex-shrink-0" />
                           <span className="text-xs font-mono font-semibold text-txt-primary truncate">
                             {res.file_path}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
-                          <Badge
-                            variant={res.relevance === 'directly_relevant' ? 'default' : 'info'}
-                            className="text-[10px] uppercase font-mono capitalize"
-                          >
-                            {res.relevance.replace('_', ' ')}
-                          </Badge>
-                          <span className="text-[9px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                            Recommendation
-                          </span>
-                        </div>
+                        <Badge
+                          variant={res.relevance === 'directly_relevant' ? 'default' : 'info'}
+                          className="text-[10px] uppercase font-mono capitalize"
+                        >
+                          {res.relevance.replace('_', ' ')}
+                        </Badge>
                       </div>
 
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-txt-muted font-mono">
-                          Relevance Rationale
-                        </p>
-                        <p className="text-xs text-txt-secondary leading-relaxed">
-                          {res.why_relevant}
-                        </p>
-                      </div>
-
-                      {/* Implementation Approach */}
-                      {res.implementation_approach && (
-                        <div className="p-3 rounded-lg bg-surface-primary border border-border/80 text-xs space-y-1">
-                          <p className="text-[11px] font-semibold text-txt-primary font-mono flex items-center gap-1.5">
-                            <Sparkles className="h-3 w-3 text-txt-primary" />
-                            Suggested Implementation Approach:
-                          </p>
-                          <p className="text-txt-secondary text-xs leading-relaxed">
-                            {res.implementation_approach}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Potential Risks */}
-                      {res.potential_risks && res.potential_risks.length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-status-warning font-mono">
-                            Potential Risks & Affected Modules:
-                          </p>
-                          <ul className="list-disc list-inside text-xs text-txt-muted space-y-0.5 pl-1">
-                            {res.potential_risks.map((risk, rIdx) => (
-                              <li key={rIdx}>{risk}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                      <p className="text-xs text-txt-secondary leading-relaxed">
+                        {res.why_relevant}
+                      </p>
 
                       {res.code_snippet && (
                         <div className="text-[11px] font-mono text-txt-muted bg-surface-primary p-2.5 rounded border border-border overflow-x-auto whitespace-pre">
@@ -245,26 +205,23 @@ export default function BugFeatureLocatorPage() {
                         </div>
                       )}
 
-                      {/* Functions and Related Modules */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {res.important_functions && res.important_functions.length > 0 && (
-                            <>
-                              <span className="text-[10px] text-txt-muted font-mono">Key Symbols:</span>
-                              {res.important_functions.map((fn) => (
-                                <span key={fn} className="text-[10px] font-mono bg-surface-primary px-1.5 py-0.5 rounded border border-border text-txt-secondary">
-                                  {fn}
-                                </span>
-                              ))}
-                            </>
-                          )}
+                      {res.important_functions && res.important_functions.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[10px] text-txt-muted font-mono">Functions:</span>
+                          {res.important_functions.map((fn) => (
+                            <span key={fn} className="text-[10px] font-mono bg-surface-primary px-1.5 py-0.5 rounded border border-border text-txt-secondary">
+                              {fn}
+                            </span>
+                          ))}
                         </div>
+                      )}
 
+                      <div className="pt-2 border-t border-border flex justify-end">
                         <Link
                           href={`/workspace/${repoId}/files?file=${encodeURIComponent(res.file_path)}`}
-                          className="inline-flex items-center gap-1 text-xs text-txt-primary hover:underline font-medium shrink-0"
+                          className="inline-flex items-center gap-1 text-xs text-txt-primary hover:underline font-medium"
                         >
-                          Inspect File
+                          Open in File Explorer
                           <ArrowRight className="h-3 w-3" />
                         </Link>
                       </div>

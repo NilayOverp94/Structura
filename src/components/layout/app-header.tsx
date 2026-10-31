@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, Settings, Plus, User, GitCompare } from 'lucide-react';
+import { LogOut, Settings, Plus, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { StructuraLogo } from '@/components/brand/structura-logo';
@@ -118,13 +118,6 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
           >
             Repositories
           </Link>
-          <Link
-            href="/compare"
-            className="px-3 py-1.5 text-xs font-medium text-txt-secondary hover:text-txt-primary hover:bg-surface-secondary rounded-md transition-colors flex items-center gap-1.5"
-          >
-            <GitCompare className="h-3.5 w-3.5" />
-            Compare
-          </Link>
         </nav>
       </div>
 
@@ -163,14 +156,6 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
                   <p className="font-semibold text-txt-primary truncate capitalize">{displayName}</p>
                   <p className="text-[11px] text-txt-muted truncate">{profileEmail || userEmail || 'Active Session'}</p>
                 </div>
-                <Link
-                  href="/compare"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-txt-secondary hover:bg-surface-tertiary hover:text-txt-primary transition-colors"
-                >
-                  <GitCompare className="h-3.5 w-3.5" />
-                  Compare Codebases
-                </Link>
                 <Link
                   href="/settings"
                   onClick={() => setMenuOpen(false)}

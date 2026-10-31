@@ -160,51 +160,27 @@ export default function DependenciesPage() {
                   key={dep.name} 
                   variants={fadeUpItem}
                   whileHover={{ backgroundColor: 'var(--surface-tertiary)' }}
-                  className="p-4 flex flex-col sm:flex-row sm:items-start justify-between gap-3 transition-colors"
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
                 >
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
                       <span className="font-mono text-sm font-semibold text-txt-primary">
                         {dep.name}
                       </span>
-                      <span className="font-mono text-xs text-txt-muted bg-surface-tertiary px-1.5 py-0.5 rounded border border-border">
+                      <span className="font-mono text-xs text-txt-muted">
                         {dep.version}
                       </span>
                       <Badge variant="default" className="text-[10px]">
                         {dep.type}
                       </Badge>
-                      {dep.ecosystem && (
-                        <span className="text-[10px] font-mono uppercase bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-700">
-                          {dep.ecosystem}
-                        </span>
-                      )}
-                      {dep.is_declared === false && (
-                        <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                          Source Discovered
-                        </span>
-                      )}
                     </div>
                     {dep.purpose && (
-                      <p className="text-xs text-txt-secondary leading-relaxed">{dep.purpose}</p>
-                    )}
-                    {dep.used_in && dep.used_in.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span className="text-[11px] text-txt-muted font-mono">Imported in:</span>
-                        {dep.used_in.map((file) => (
-                          <a
-                            key={file}
-                            href={`/workspace/${repoId}/files?file=${encodeURIComponent(file)}`}
-                            className="text-[11px] font-mono text-txt-secondary hover:text-txt-primary bg-surface-secondary hover:bg-surface-tertiary px-1.5 py-0.5 rounded border border-border transition-colors truncate max-w-xs"
-                          >
-                            {file}
-                          </a>
-                        ))}
-                      </div>
+                      <p className="text-xs text-txt-secondary">{dep.purpose}</p>
                     )}
                   </div>
 
                   {dep.category && (
-                    <Badge variant="default" className="text-[10px] self-start capitalize shrink-0">
+                    <Badge variant="default" className="text-[10px] self-start sm:self-center capitalize">
                       {dep.category}
                     </Badge>
                   )}
