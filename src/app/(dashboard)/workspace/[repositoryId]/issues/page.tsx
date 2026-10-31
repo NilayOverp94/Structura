@@ -16,6 +16,7 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LocateResult, Repository } from '@/types';
+import { getUserPreferences } from '@/lib/settings/user-settings';
 
 export default function BugFeatureLocatorPage() {
   const params = useParams();
@@ -53,9 +54,15 @@ export default function BugFeatureLocatorPage() {
     if (textToSearch) setQuery(textToSearch);
 
     try {
+      const prefs = getUserPreferences();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (prefs?.geminiApiKey && prefs.geminiApiKey.trim()) {
+        headers['x-gemini-key'] = prefs.geminiApiKey.trim();
+      }
+
       const response = await fetch(`/api/repositories/${repoId}/locate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ query: q.trim() }),
       });
 

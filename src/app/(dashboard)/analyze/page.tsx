@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { parseGitHubUrl } from '@/lib/validation/github-url';
 import { ANALYSIS_STAGES } from '@/config/constants';
+import { getUserPreferences } from '@/lib/settings/user-settings';
 
 function AnalyzeForm() {
   const router = useRouter();
@@ -49,9 +50,15 @@ function AnalyzeForm() {
     setStatusMessage('Connecting to GitHub API...');
 
     try {
+      const prefs = getUserPreferences();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (prefs?.geminiApiKey && prefs.geminiApiKey.trim()) {
+        headers['x-gemini-key'] = prefs.geminiApiKey.trim();
+      }
+
       const response = await fetch('/api/repositories/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ url: urlToAnalyze.trim() }),
       });
 

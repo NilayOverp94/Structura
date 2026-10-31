@@ -15,6 +15,7 @@ import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Repository, RoadmapPhase } from '@/types';
+import { getUserPreferences } from '@/lib/settings/user-settings';
 
 export default function ContributorRoadmapPage() {
   const params = useParams();
@@ -26,9 +27,15 @@ export default function ContributorRoadmapPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const prefs = getUserPreferences();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (prefs?.geminiApiKey && prefs.geminiApiKey.trim()) {
+      headers['x-gemini-key'] = prefs.geminiApiKey.trim();
+    }
+
     Promise.all([
       fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
-      fetch(`/api/repositories/${repoId}/roadmap/generate`, { method: 'POST' }).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/repositories/${repoId}/roadmap/generate`, { method: 'POST', headers }).then((r) => r.ok ? r.json() : null),
     ])
       .then(([repoData, roadmapData]) => {
         if (repoData?.repository) setRepository(repoData.repository);

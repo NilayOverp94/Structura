@@ -79,9 +79,14 @@ function FileExplorerContent() {
     setExplaining(true);
     try {
       const activeId = repoId || repository?.id;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (prefs?.geminiApiKey && prefs.geminiApiKey.trim()) {
+        headers['x-gemini-key'] = prefs.geminiApiKey.trim();
+      }
+
       const res = await fetch(`/api/repositories/${activeId}/explain`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ filePath: selectedFile.file_path, content: selectedFile.content }),
       });
       const data = await res.json();

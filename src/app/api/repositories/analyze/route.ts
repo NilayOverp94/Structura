@@ -27,10 +27,11 @@ export async function POST(request: Request) {
       );
     }
 
+    const clientKey = request.headers.get('x-gemini-key') || undefined;
     const repoId = `repo-${parsed.owner}-${parsed.repo}`.toLowerCase();
     const analyzer = new RepositoryAnalyzer(repoId);
 
-    const repoRecord = await analyzer.analyze(parsed.owner, parsed.repo, 'local-user');
+    const repoRecord = await analyzer.analyze(parsed.owner, parsed.repo, 'local-user', clientKey);
     return NextResponse.json({
       success: true,
       repository: repoRecord,

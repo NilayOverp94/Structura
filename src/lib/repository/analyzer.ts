@@ -34,7 +34,7 @@ export class RepositoryAnalyzer {
     }
   }
 
-  async analyze(owner: string, repo: string, userId: string): Promise<Repository> {
+  async analyze(owner: string, repo: string, userId: string, clientKey?: string): Promise<Repository> {
     try {
       // Stage 1: Connecting to GitHub
       this.updateProgress('connecting', 5, 'Connecting to GitHub API...');
@@ -171,7 +171,7 @@ export class RepositoryAnalyzer {
 
       let overviewText = `${meta.full_name} is an open-source project written primarily in ${meta.language || 'TypeScript'}. It has ${meta.stars.toLocaleString()} stars on GitHub.`;
 
-      if (hasGeminiKey()) {
+      if (hasGeminiKey(clientKey)) {
         try {
           const summaryFiles = fetchedFiles.slice(0, 10).map(f => `File: ${f.path}\nExcerpt:\n${f.content.slice(0, 500)}`).join('\n\n');
           const prompt = `Repository: ${meta.full_name}\nDescription: ${meta.description || 'N/A'}\n\nKey Files:\n${summaryFiles}`;
@@ -179,7 +179,7 @@ export class RepositoryAnalyzer {
           const aiInsights = await generateJSON<{
             overview: string;
             architecture: RepositoryInsights['architecture'];
-          }>(prompt, ARCHITECTURE_PROMPT);
+          }>(prompt, ARCHITECTURE_PROMPT, clientKey);
 
           if (aiInsights?.architecture) {
             insightsData = aiInsights.architecture;

@@ -22,19 +22,20 @@ export async function POST(
     }
 
     const { query } = validation.data;
+    const clientKey = request.headers.get('x-gemini-key') || undefined;
 
     // Search real chunks and files
     const searchResults = await hybridSearch(id, query);
     const files = await RepositoryStore.getFiles(id);
 
-    if (hasGeminiKey() && (searchResults.length > 0 || files.length > 0)) {
+    if (hasGeminiKey(clientKey) && (searchResults.length > 0 || files.length > 0)) {
       try {
         const context = searchResults.length > 0
           ? searchResults.map(r => `File: ${r.file_path}\nSnippet:\n${r.chunk.content.slice(0, 400)}`).join('\n\n')
           : files.slice(0, 10).map(f => `File: ${f.file_path}\n${f.content.slice(0, 300)}`).join('\n\n');
 
         const prompt = `Query: "${query}"\n\nIndexed Code Context:\n${context}`;
-        const structured = await generateJSON<any>(prompt, LOCATE_PROMPT);
+        const structured = await generateJSON<any>(prompt, LOCATE_PROMPT, clientKey);
 
         if (structured?.results) {
           return NextResponse.json(structured);
