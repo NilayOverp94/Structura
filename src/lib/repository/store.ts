@@ -83,23 +83,49 @@ export class RepositoryStore {
     let owner = '';
     let repoName = '';
     const match = id.match(/^repo-([^-]+)-(.+)$/i);
-    if (!match) return null;
+    if (match) {
+      owner = match[1];
+      repoName = match[2];
+    } else {
+      const clean = id.replace(/^repo-/i, '');
+      const parts = clean.includes('/') ? clean.split('/') : clean.split('-');
+      if (parts.length >= 2) {
+        owner = parts[0];
+        repoName = parts.slice(1).join('-');
+      }
+    }
 
-    owner = match[1];
-    repoName = match[2];
+    if (!owner || !repoName) return null;
 
     let meta = null;
     try {
       meta = await githubClient.getRepository(owner, repoName);
     } catch (e) {
       console.warn(`Could not resolve GitHub repository ${owner}/${repoName}:`, e);
-      return null;
+      meta = {
+        name: repoName,
+        owner: owner,
+        full_name: `${owner}/${repoName}`,
+        description: `${owner}/${repoName} is an open-source codebase indexed with Structura AI.`,
+        default_branch: 'main',
+        language: 'TypeScript',
+        stars: 0,
+        forks: 0,
+        open_issues: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        license: null,
+        topics: [],
+        size: 0,
+        html_url: `https://github.com/${owner}/${repoName}`,
+      };
     }
 
     const full_name = meta.full_name;
     const name = meta.name;
     const repoOwner = meta.owner;
     const lang = meta.language || 'TypeScript';
+    const branch = meta.default_branch || 'main';
 
     const repoRecord: Repository = {
       id,
@@ -109,10 +135,10 @@ export class RepositoryStore {
       full_name,
       github_url: meta.html_url,
       description: meta.description || `${full_name} is an open-source codebase indexed with Structura AI.`,
-      default_branch: meta.default_branch || 'main',
+      default_branch: branch,
       primary_language: lang,
-      stars: meta.stars,
-      forks: meta.forks,
+      stars: meta.stars || 0,
+      forks: meta.forks || 0,
       open_issues: meta.open_issues || 0,
       indexed_commit_sha: null,
       analysis_status: 'completed',
@@ -123,13 +149,21 @@ export class RepositoryStore {
     // Fetch repository files from GitHub in high-speed parallel batches
     let fetchedFiles: RepositoryFile[] = [];
     try {
-      const rawTree = await githubClient.getTree(owner, repoName, meta.default_branch);
-      const filteredTree = filterRepositoryFiles(rawTree);
-      const prioritized = prioritizeFiles(filteredTree).slice(0, 30);
-
-      const filePromises = prioritized.map(async (item, i) => {
+      let rawTree: any[] = [];
+      try {
+        rawTree = await githubClient.getTree(owner, repoName, branch);
+      } catch {
         try {
-          const content = await githubClient.getFileContent(owner, repoName, item.path, meta.default_branch);
+          rawTree = await githubClient.getTree(owner, repoName, branch === 'main' ? 'master' : 'main');
+        } catch {}
+      }
+
+      const filteredTree = filterRepositoryFiles(rawTree);
+      const prioritized = prioritizeFiles(filteredTree);
+
+      const filePromises = prioritized.slice(0, 45).map(async (item, i) => {
+        try {
+          const content = await githubClient.getFileContent(owner, repoName, item.path, branch);
           return {
             id: `f-${id}-${i}`,
             repository_id: id,
@@ -148,8 +182,59 @@ export class RepositoryStore {
 
       const settled = await Promise.all(filePromises);
       fetchedFiles = settled.filter((f): f is RepositoryFile => f !== null);
+
+      // Include all remaining files in filteredTree as entries
+      const loaded = new Set(fetchedFiles.map(f => f.file_path));
+      for (const item of filteredTree.slice(0, 150)) {
+        if (!loaded.has(item.path)) {
+          fetchedFiles.push({
+            id: `f-${id}-${fetchedFiles.length}`,
+            repository_id: id,
+            file_path: item.path,
+            language: detectLanguage(item.path),
+            file_size: item.size || 0,
+            content: '',
+            blob_sha: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
     } catch (err) {
       console.warn('Live tree fetch error in recovery:', err);
+    }
+
+    // Safety fallback: If fetchedFiles is still empty, load standard repo files via raw CDN
+    if (fetchedFiles.length === 0) {
+      const fallbackCandidates = [
+        'README.md',
+        'package.json',
+        'index.html',
+        'vite.config.ts',
+        'next.config.js',
+        'src/App.tsx',
+        'src/main.tsx',
+        'src/index.css',
+        'tsconfig.json',
+      ];
+      for (const candidate of fallbackCandidates) {
+        try {
+          const content = await githubClient.getFileContent(owner, repoName, candidate, branch);
+          if (content && content.trim().length > 0) {
+            fetchedFiles.push({
+              id: `f-${id}-${fetchedFiles.length}`,
+              repository_id: id,
+              file_path: candidate,
+              language: detectLanguage(candidate),
+              file_size: content.length,
+              content,
+              blob_sha: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          }
+        } catch {}
+      }
     }
 
     const detectedTech = detectTechnologies(fetchedFiles.map(f => ({ path: f.file_path, content: f.content })));
@@ -241,11 +326,9 @@ export class RepositoryStore {
       // Fallback
     }
 
-    // Auto-recover from GitHub if ID matches repository pattern
-    if (id.startsWith('repo-')) {
-      const recovered = await this.recoverOrSynthesize(id);
-      if (recovered) return recovered.repository;
-    }
+    // Auto-recover from GitHub if not found in DB/cache
+    const recovered = await this.recoverOrSynthesize(id);
+    if (recovered) return recovered.repository;
 
     return null;
   }
@@ -270,10 +353,8 @@ export class RepositoryStore {
       // Fallback
     }
 
-    if (id.startsWith('repo-')) {
-      const recovered = await this.recoverOrSynthesize(id);
-      if (recovered) return recovered.files;
-    }
+    const recovered = await this.recoverOrSynthesize(id);
+    if (recovered && recovered.files && recovered.files.length > 0) return recovered.files;
 
     return [];
   }
@@ -283,7 +364,23 @@ export class RepositoryStore {
    */
   static async getFile(repositoryId: string, fileIdOrPath: string): Promise<RepositoryFile | null> {
     const files = await this.getFiles(repositoryId);
-    return files.find(f => f.id === fileIdOrPath || f.file_path === fileIdOrPath) || files[0] || null;
+    const file = files.find(f => f.id === fileIdOrPath || f.file_path === fileIdOrPath);
+    if (file) {
+      if (!file.content || file.content.trim().length === 0) {
+        try {
+          const repo = await this.getRepository(repositoryId);
+          if (repo) {
+            const content = await githubClient.getFileContent(repo.owner, repo.name, file.file_path, repo.default_branch);
+            if (content) {
+              file.content = content;
+              file.file_size = content.length;
+            }
+          }
+        } catch {}
+      }
+      return file;
+    }
+    return files[0] || null;
   }
 
   /**
@@ -319,10 +416,8 @@ export class RepositoryStore {
       // Fallback
     }
 
-    if (id.startsWith('repo-')) {
-      const recovered = await this.recoverOrSynthesize(id);
-      if (recovered) return recovered.insights;
-    }
+    const recovered = await this.recoverOrSynthesize(id);
+    if (recovered) return recovered.insights;
 
     return null;
   }
