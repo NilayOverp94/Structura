@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { notionEase, notionTransition } from '@/lib/animations/motion';
@@ -13,7 +13,9 @@ import {
   Layers, 
   Code,
   Loader2,
-  AlertCircle
+  ArrowRight,
+  GitFork,
+  Cpu
 } from 'lucide-react';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
@@ -22,12 +24,14 @@ import { Badge } from '@/components/ui/badge';
 import { formatFileSize, cn } from '@/lib/utils';
 import { Repository, RepositoryFile } from '@/types';
 import { getUserPreferences, UserPreferences, DEFAULT_USER_PREFERENCES } from '@/lib/settings/user-settings';
+import { FileTreeView } from '@/components/files/file-tree-view';
 
 function FileExplorerContent() {
   const params = useParams();
   const repoId = (params?.repositoryId as string) || '';
   const searchParams = useSearchParams();
   const fileQuery = searchParams.get('file');
+  const lineQuery = searchParams.get('line') ? parseInt(searchParams.get('line')!, 10) : null;
 
   const [repository, setRepository] = useState<Repository | null>(null);
   const [files, setFiles] = useState<RepositoryFile[]>([]);
@@ -35,9 +39,12 @@ function FileExplorerContent() {
   const [search, setSearch] = useState('');
   const [copied, setCopied] = useState(false);
   const [explaining, setExplaining] = useState(false);
-  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [detailedExplanation, setDetailedExplanation] = useState<any | null>(null);
+  const [highlightedLine, setHighlightedLine] = useState<number | null>(lineQuery);
   const [loading, setLoading] = useState(true);
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
+
+  const codeContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPrefs(getUserPreferences());
@@ -64,10 +71,21 @@ function FileExplorerContent() {
       .finally(() => setLoading(false));
   }, [repoId, fileQuery]);
 
-  const filteredFiles = useMemo(() => {
-    if (!search.trim()) return files;
-    return files.filter(f => f.file_path.toLowerCase().includes(search.toLowerCase()));
-  }, [files, search]);
+  useEffect(() => {
+    if (lineQuery) {
+      setHighlightedLine(lineQuery);
+      scrollToLine(lineQuery);
+    }
+  }, [lineQuery]);
+
+  const scrollToLine = (lineNum: number) => {
+    setTimeout(() => {
+      const el = document.getElementById(`code-line-${lineNum}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
 
   const handleCopyCode = () => {
     if (!selectedFile) return;
@@ -92,14 +110,25 @@ function FileExplorerContent() {
         body: JSON.stringify({ filePath: selectedFile.file_path, content: selectedFile.content }),
       });
       const data = await res.json();
-      setAiExplanation(data.explanation || 'Detailed AI explanation generated based on file AST structure.');
+      setDetailedExplanation(data);
     } catch {
-      setAiExplanation(
-        `This file (${selectedFile.file_path}) defines essential logic for ${selectedFile.language || 'code'} execution.`
-      );
+      setDetailedExplanation({
+        explanation: `This file (${selectedFile.file_path}) defines essential logic for ${selectedFile.language || 'code'} execution.`,
+        role_in_project: 'Module processing and application logic',
+        importance: 'important',
+        key_functions: [],
+        incoming_dependencies: [],
+        outgoing_dependencies: [],
+      });
     } finally {
       setExplaining(false);
     }
+  };
+
+  const handleSelectFile = (file: RepositoryFile) => {
+    setSelectedFile(file);
+    setDetailedExplanation(null);
+    setHighlightedLine(null);
   };
 
   const lines = selectedFile?.content ? selectedFile.content.split('\n') : [];
@@ -113,7 +142,7 @@ function FileExplorerContent() {
 
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-[calc(100vh-3.5rem)]">
           {/* File Tree Sidebar */}
-          <div className="w-full md:w-72 border-r border-border bg-surface-primary flex flex-col flex-shrink-0">
+          <div className="w-full md:w-80 border-r border-border bg-surface-primary flex flex-col flex-shrink-0">
             <div className="p-3 border-b border-border">
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-txt-muted" />
@@ -121,49 +150,27 @@ function FileExplorerContent() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Filter files..."
-                  className="input-field pl-8 py-1.5 text-xs"
+                  placeholder="Search file name or path..."
+                  className="input-field pl-8 py-1.5 text-xs font-mono"
                 />
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+            <div className="flex-1 overflow-hidden">
               {loading ? (
-                <div className="py-10 text-center text-xs text-txt-muted flex items-center justify-center gap-2">
+                <div className="py-12 text-center text-xs text-txt-muted flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading files...
+                  Loading repository tree...
                 </div>
-              ) : filteredFiles.length === 0 ? (
-                <p className="p-4 text-xs text-txt-muted text-center">No files found.</p>
+              ) : files.length === 0 ? (
+                <p className="p-4 text-xs text-txt-muted text-center">No source files indexed.</p>
               ) : (
-                filteredFiles.map((file) => {
-                  const isSelected = selectedFile?.file_path === file.file_path;
-                  return (
-                    <motion.button
-                      key={file.id}
-                      whileHover={{ x: 2 }}
-                      transition={{ duration: 0.15, ease: notionEase }}
-                      onClick={() => {
-                        setSelectedFile(file);
-                        setAiExplanation(null);
-                      }}
-                      className={cn(
-                        'w-full text-left px-2.5 py-1.5 rounded text-xs font-mono flex items-center justify-between transition-colors',
-                        isSelected
-                          ? 'bg-zinc-800 text-white font-medium border border-zinc-700 shadow-sm'
-                          : 'text-txt-secondary hover:bg-surface-secondary hover:text-txt-primary'
-                      )}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <FileCode2 className="h-3.5 w-3.5 text-txt-muted flex-shrink-0" />
-                        <span className="truncate">{file.file_path}</span>
-                      </div>
-                      <span className="text-[10px] text-txt-muted ml-1 flex-shrink-0">
-                        {formatFileSize(file.file_size)}
-                      </span>
-                    </motion.button>
-                  );
-                })
+                <FileTreeView
+                  files={files}
+                  selectedFile={selectedFile}
+                  onSelectFile={handleSelectFile}
+                  searchQuery={search}
+                />
               )}
             </div>
           </div>
@@ -173,15 +180,18 @@ function FileExplorerContent() {
             {selectedFile ? (
               <>
                 {/* File Header */}
-                <div className="h-12 border-b border-border bg-surface-primary px-4 flex items-center justify-between">
+                <div className="h-12 border-b border-border bg-surface-primary px-4 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2 truncate">
-                    <FileCode2 className="h-4 w-4 text-txt-primary" />
+                    <FileCode2 className="h-4 w-4 text-txt-primary shrink-0" />
                     <span className="text-xs font-mono font-medium text-txt-primary truncate">
                       {selectedFile.file_path}
                     </span>
                     <Badge variant="default" className="text-[10px]">
                       {selectedFile.language || 'Plain Text'}
                     </Badge>
+                    <span className="text-[10px] text-txt-muted font-mono hidden sm:inline">
+                      {lines.length} lines • {formatFileSize(selectedFile.file_size)}
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -192,7 +202,7 @@ function FileExplorerContent() {
                       loading={explaining}
                       className="text-xs h-8"
                     >
-                      <Sparkles className="h-3 w-3 mr-1" />
+                      <Sparkles className="h-3 w-3 mr-1 text-txt-primary" />
                       Explain File
                     </Button>
                     <Button
@@ -200,6 +210,7 @@ function FileExplorerContent() {
                       size="sm"
                       onClick={handleCopyCode}
                       className="text-xs h-8"
+                      title="Copy code"
                     >
                       {copied ? <Check className="h-3 w-3 text-status-success" /> : <Copy className="h-3 w-3" />}
                     </Button>
@@ -208,37 +219,117 @@ function FileExplorerContent() {
 
                 {/* AI Explanation Drawer if triggered */}
                 <AnimatePresence>
-                  {aiExplanation && (
+                  {detailedExplanation && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={notionTransition}
-                      className="overflow-hidden border-b border-border bg-surface-primary p-4"
+                      className="overflow-hidden border-b border-border bg-surface-primary p-4 shrink-0 shadow-sm"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-txt-primary">
-                            <Sparkles className="h-3.5 w-3.5 text-txt-primary" />
-                            AI File Analysis & Importance
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-txt-primary">
+                              <Sparkles className="h-3.5 w-3.5 text-txt-primary" />
+                              AI File Intelligence & AST Analysis
+                              <Badge variant="default" className="text-[9px] uppercase font-mono">
+                                {detailedExplanation.importance || 'Important'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-txt-secondary leading-relaxed">
+                              {detailedExplanation.explanation}
+                            </p>
                           </div>
-                          <p className="text-xs text-txt-secondary leading-relaxed">
-                            {aiExplanation}
-                          </p>
+                          <button
+                            onClick={() => setDetailedExplanation(null)}
+                            className="text-xs text-txt-muted hover:text-txt-primary p-1"
+                          >
+                            ✕
+                          </button>
                         </div>
-                        <button
-                          onClick={() => setAiExplanation(null)}
-                          className="text-xs text-txt-muted hover:text-txt-primary"
-                        >
-                          ✕
-                        </button>
+
+                        {/* Functions & Classes found */}
+                        {detailedExplanation.key_functions && detailedExplanation.key_functions.length > 0 && (
+                          <div className="pt-2 border-t border-border/60">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-txt-muted font-mono mb-1.5">
+                              Declared Functions & Classes (Click to jump):
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {detailedExplanation.key_functions.map((fn: any, idx: number) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setHighlightedLine(fn.startLine);
+                                    scrollToLine(fn.startLine);
+                                  }}
+                                  className="text-[11px] font-mono bg-surface-secondary hover:bg-surface-tertiary text-txt-primary px-2 py-0.5 rounded border border-border flex items-center gap-1 transition-colors"
+                                >
+                                  <Cpu className="h-3 w-3 text-txt-muted" />
+                                  <span>{fn.name}</span>
+                                  <span className="text-[9px] text-txt-muted">:{fn.startLine}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Dependencies links */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60 text-[11px]">
+                          {detailedExplanation.outgoing_dependencies && detailedExplanation.outgoing_dependencies.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-txt-muted font-mono mb-1">
+                                Outgoing Dependencies (Imports):
+                              </p>
+                              <div className="space-y-1">
+                                {detailedExplanation.outgoing_dependencies.slice(0, 4).map((f: string) => (
+                                  <button
+                                    key={f}
+                                    onClick={() => {
+                                      const target = files.find(file => file.file_path === f);
+                                      if (target) handleSelectFile(target);
+                                    }}
+                                    className="text-txt-secondary hover:text-txt-primary font-mono text-[11px] flex items-center gap-1 truncate text-left"
+                                  >
+                                    <ArrowRight className="h-3 w-3 shrink-0 text-txt-muted" />
+                                    <span className="truncate">{f}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {detailedExplanation.incoming_dependencies && detailedExplanation.incoming_dependencies.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-txt-muted font-mono mb-1">
+                                Incoming Dependencies (Imported By):
+                              </p>
+                              <div className="space-y-1">
+                                {detailedExplanation.incoming_dependencies.slice(0, 4).map((f: string) => (
+                                  <button
+                                    key={f}
+                                    onClick={() => {
+                                      const target = files.find(file => file.file_path === f);
+                                      if (target) handleSelectFile(target);
+                                    }}
+                                    className="text-txt-secondary hover:text-txt-primary font-mono text-[11px] flex items-center gap-1 truncate text-left"
+                                  >
+                                    <GitFork className="h-3 w-3 shrink-0 text-txt-muted" />
+                                    <span className="truncate">{f}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                {/* Code Body */}
+                {/* Code Body with Line Jump & Highlight */}
                 <motion.div 
+                  ref={codeContainerRef}
                   key={selectedFile.file_path}
                   initial={{ opacity: 0.4 }}
                   animate={{ opacity: 1 }}
@@ -251,18 +342,39 @@ function FileExplorerContent() {
                 >
                   <table className="w-full border-collapse">
                     <tbody>
-                      {lines.map((line, idx) => (
-                        <tr key={idx} className="hover:bg-zinc-800/30">
-                          {prefs.showLineNumbers && (
-                            <td className="w-10 select-none text-right pr-4 text-txt-muted opacity-40 font-mono text-[11px]">
-                              {idx + 1}
+                      {lines.map((line, idx) => {
+                        const lineNum = idx + 1;
+                        const isHighlighted = lineNum === highlightedLine;
+
+                        return (
+                          <tr 
+                            id={`code-line-${lineNum}`}
+                            key={idx} 
+                            onClick={() => setHighlightedLine(lineNum)}
+                            className={cn(
+                              "transition-colors cursor-pointer",
+                              isHighlighted 
+                                ? "bg-zinc-800/90 border-l-2 border-txt-primary" 
+                                : "hover:bg-zinc-800/20"
+                            )}
+                          >
+                            {prefs.showLineNumbers && (
+                              <td className={cn(
+                                "w-12 select-none text-right pr-4 font-mono text-[11px]",
+                                isHighlighted ? "text-white font-bold" : "text-txt-muted opacity-40"
+                              )}>
+                                {lineNum}
+                              </td>
+                            )}
+                            <td className={cn(
+                              "font-mono",
+                              isHighlighted ? "text-white font-medium" : "text-txt-primary"
+                            )}>
+                              {line || ' '}
                             </td>
-                          )}
-                          <td className="text-txt-primary font-mono">
-                            {line || ' '}
-                          </td>
-                        </tr>
-                      ))}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </motion.div>
@@ -270,7 +382,7 @@ function FileExplorerContent() {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-txt-muted text-xs p-6 space-y-2">
                 <Code className="h-8 w-8 text-txt-muted" />
-                <p>Select a file from the explorer to view contents and AI explanations.</p>
+                <p>Select a file from the repository tree to view contents and AI explanations.</p>
               </div>
             )}
           </div>

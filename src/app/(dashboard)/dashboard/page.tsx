@@ -78,6 +78,39 @@ export default function DashboardPage() {
               Select an analyzed codebase to inspect its architecture, or submit a new GitHub repository.
             </p>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Link href="/compare">
+              <Button variant="secondary" size="sm" className="text-xs">
+                Compare Repositories
+              </Button>
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Demo Repository Experience Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.04, ease: notionEase }}
+          className="card p-4 bg-surface-secondary/70 border-zinc-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="default" className="text-[10px] bg-zinc-800 text-zinc-200 border-zinc-700 font-mono">
+                Interactive Demo
+              </Badge>
+              <span className="text-xs font-semibold text-txt-primary">structura-ai/structura-core</span>
+            </div>
+            <p className="text-xs text-txt-secondary leading-relaxed">
+              Explore Structura&apos;s full RAG codebase chatbot, interactive React Flow architecture explorer, and dependency topology without configuring a GitHub account.
+            </p>
+          </div>
+          <Link href="/workspace/demo-codecompass-repo">
+            <Button variant="secondary" size="sm" className="text-xs shrink-0 whitespace-nowrap">
+              Launch Demo Workspace →
+            </Button>
+          </Link>
         </motion.div>
 
         {/* Repository Submission Panel */}
@@ -232,22 +265,36 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-txt-muted">
+                  <div className="pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2 text-xs text-txt-muted">
                     <div className="flex items-center gap-3 font-mono">
                       <span className="flex items-center gap-1">
                         <Star className="h-3 w-3 text-status-warning" />
                         {repo.stars.toLocaleString()}
                       </span>
                       <span>{repo.primary_language}</span>
+                      {repo.created_at && (
+                        <span className="text-[11px] text-txt-muted hidden sm:inline">
+                          Indexed {new Date(repo.created_at).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
 
-                    <Link
-                      href={`/workspace/${repo.id}`}
-                      className="inline-flex items-center gap-1 text-txt-primary hover:underline font-medium"
-                    >
-                      Open Workspace
-                      <ArrowRight className="h-3 w-3" />
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/analyze?url=${encodeURIComponent(repo.github_url)}`}
+                        className="text-txt-muted hover:text-txt-primary text-[11px] font-mono transition-colors"
+                        title="Re-run analysis to index latest commits"
+                      >
+                        Re-index
+                      </Link>
+                      <Link
+                        href={`/workspace/${repo.id}`}
+                        className="inline-flex items-center gap-1 text-txt-primary hover:underline font-medium"
+                      >
+                        Open Workspace
+                        <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    </div>
                   </div>
                 </motion.div>
               ))}

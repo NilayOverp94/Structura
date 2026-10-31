@@ -179,6 +179,9 @@ export interface LocateResult {
   related_modules: string[];
   suggested_order: number;
   code_snippet?: string;
+  implementation_approach?: string;
+  potential_risks?: string[];
+  is_recommendation?: boolean;
 }
 
 export interface DependencyInfo {
@@ -188,6 +191,8 @@ export interface DependencyInfo {
   purpose?: string;
   used_in?: string[];
   category?: string;
+  ecosystem?: string;
+  is_declared?: boolean;
 }
 
 export interface GitHubRepoMeta {

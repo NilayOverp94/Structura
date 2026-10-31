@@ -17,14 +17,21 @@ import {
   Layers,
   ArrowRight,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Search,
+  ExternalLink,
+  GitCompare,
+  RefreshCw,
+  GitCommit,
+  BookOpen
 } from 'lucide-react';
 import Link from 'next/link';
 import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Repository, RepositoryInsights } from '@/types';
+import { Repository, RepositoryInsights, RepositoryFile } from '@/types';
+import { GlobalSearchModal } from '@/components/search/global-search-modal';
 
 export default function WorkspaceOverviewPage() {
   const params = useParams();
@@ -32,22 +39,31 @@ export default function WorkspaceOverviewPage() {
 
   const [repository, setRepository] = useState<Repository | null>(null);
   const [insights, setInsights] = useState<RepositoryInsights | null>(null);
+  const [readme, setReadme] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
       fetch(`/api/repositories/${repoId}`).then((r) => r.ok ? r.json() : null),
       fetch(`/api/repositories/${repoId}/architecture`).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/repositories/${repoId}/files`).then((r) => r.ok ? r.json() : null),
     ])
-      .then(([repoData, insightsData]) => {
+      .then(([repoData, insightsData, filesData]) => {
         if (repoData?.repository) setRepository(repoData.repository);
         if (insightsData?.insights) setInsights(insightsData.insights);
+        if (filesData?.files && Array.isArray(filesData.files)) {
+          const rm = filesData.files.find((f: RepositoryFile) => f.file_path.toLowerCase().includes('readme'));
+          if (rm) setReadme(rm.content);
+        }
       })
       .catch((err) => {
         console.warn('Could not load live repo workspace:', err);
       })
       .finally(() => setLoading(false));
   }, [repoId]);
+
+  const isDemo = repoId.includes('demo');
 
   return (
     <div className="min-h-screen bg-surface-primary flex flex-col">
@@ -82,24 +98,65 @@ export default function WorkspaceOverviewPage() {
               transition={{ duration: 0.3, ease: notionEase }}
               className="space-y-8"
             >
+              {/* Demo Mode Notice */}
+              {isDemo && (
+                <div className="p-3.5 rounded-xl border border-zinc-700 bg-surface-secondary/80 flex items-center justify-between gap-4 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="text-[10px] font-mono uppercase bg-zinc-800 text-zinc-300">
+                      Interactive Demo
+                    </Badge>
+                    <span className="text-txt-primary">
+                      You are viewing the pre-indexed Structura demo repository.
+                    </span>
+                  </div>
+                  <Link href="/dashboard" className="text-txt-muted hover:text-txt-primary text-xs underline font-medium shrink-0">
+                    Analyze your own repository →
+                  </Link>
+                </div>
+              )}
+
               {/* Header */}
               <motion.div 
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, ease: notionEase }}
-                className="space-y-3 pb-6 border-b border-border"
+                className="space-y-4 pb-6 border-b border-border"
               >
                 <div className="flex items-center gap-2 text-xs font-mono text-txt-muted">
                   <span>{repository.owner}</span>
                   <span>/</span>
-                  <span className="text-txt-primary">{repository.name}</span>
+                  <span className="text-txt-primary font-semibold">{repository.name}</span>
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <h1 className="text-2xl font-bold text-txt-primary">{repository.full_name}</h1>
-                  <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-txt-primary tracking-tight">{repository.full_name}</h1>
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="default">{repository.primary_language || 'Codebase'}</Badge>
                     <Badge variant="success">Indexed</Badge>
+                    
+                    <button
+                      onClick={() => setSearchOpen(true)}
+                      className="px-2.5 py-1 text-xs rounded border border-border bg-surface-secondary text-txt-secondary hover:text-txt-primary flex items-center gap-1.5 transition-colors"
+                      title="Search Codebase (Cmd+K)"
+                    >
+                      <Search className="h-3 w-3" />
+                      <span>Search</span>
+                      <span className="text-[10px] text-txt-muted font-mono ml-1">⌘K</span>
+                    </button>
+
+                    <Link href={`/compare?a=${repoId}`}>
+                      <Button variant="secondary" size="sm" className="text-xs h-7">
+                        <GitCompare className="h-3 w-3 mr-1" />
+                        Compare
+                      </Button>
+                    </Link>
+
+                    <Link href={`/analyze?url=${encodeURIComponent(repository.github_url)}`}>
+                      <Button variant="secondary" size="sm" className="text-xs h-7" title="Re-index this repository">
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Re-index
+                      </Button>
+                    </Link>
                   </div>
                 </div>
 
@@ -120,12 +177,27 @@ export default function WorkspaceOverviewPage() {
                     <GitBranch className="h-3.5 w-3.5" />
                     {repository.default_branch} branch
                   </span>
+                  {repository.indexed_commit_sha && (
+                    <span className="flex items-center gap-1.5">
+                      <GitCommit className="h-3.5 w-3.5" />
+                      Commit {repository.indexed_commit_sha.slice(0, 7)}
+                    </span>
+                  )}
                   {repository.created_at && (
                     <span className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" />
                       Indexed {new Date(repository.created_at).toLocaleDateString()}
                     </span>
                   )}
+                  <a
+                    href={repository.github_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-txt-primary hover:underline"
+                  >
+                    View on GitHub
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
               </motion.div>
 
@@ -233,10 +305,30 @@ export default function WorkspaceOverviewPage() {
                   ))}
                 </motion.div>
               </div>
+
+              {/* GitHub Context & README Excerpt */}
+              {readme && (
+                <div className="card p-6 space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-border">
+                    <BookOpen className="h-4 w-4 text-txt-primary" />
+                    <h3 className="text-sm font-bold text-txt-primary">Repository README</h3>
+                  </div>
+                  <div className="p-4 rounded-lg bg-surface-secondary text-xs text-txt-secondary font-mono leading-relaxed max-h-60 overflow-y-auto whitespace-pre-wrap">
+                    {readme.slice(0, 3000)}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </main>
       </div>
+
+      {/* Global Search Modal */}
+      <GlobalSearchModal
+        repositoryId={repoId}
+        isOpen={searchOpen}
+        onClose={() => setSearchOpen(false)}
+      />
     </div>
   );
 }

@@ -87,7 +87,7 @@ Return a JSON response with this structure:
 
 Generate 4-5 progressive phases with 3-4 steps each. Use ONLY actual file paths from the repository.`;
 
-export const LOCATE_PROMPT = `Based on the repository context and the user query, identify the most relevant files and provide a structured analysis.
+export const LOCATE_PROMPT = `Based on the repository context and the user task/bug/feature request, identify the most relevant files and provide a structured analysis.
 
 Return a JSON response with this structure:
 {
@@ -95,18 +95,21 @@ Return a JSON response with this structure:
     {
       "file_path": "actual/file/path",
       "relevance": "directly_relevant|related|potentially_relevant",
-      "why_relevant": "Explanation of why this file is relevant to the query",
-      "important_functions": ["function names found in the file"],
+      "why_relevant": "Explanation of why this file is relevant to the task",
+      "important_functions": ["function or class names in this file"],
       "related_modules": ["other related file paths"],
       "suggested_order": 1,
-      "code_snippet": "relevant code snippet if applicable"
+      "code_snippet": "relevant code snippet from file",
+      "implementation_approach": "Recommended approach for modifying or extending this file",
+      "potential_risks": ["Risk 1: Component breakage", "Risk 2: Breaking API contracts"],
+      "is_recommendation": true
     }
   ],
-  "summary": "Overall summary of findings",
-  "implementation_suggestions": "If the query is about implementing something, provide clear step-by-step suggestions"
+  "summary": "Overall technical analysis and architectural guidance",
+  "implementation_suggestions": "Step-by-step recommended implementation workflow"
 }
 
-Use ONLY actual files and functions from the provided context.`;
+IMPORTANT: Use ONLY actual files and functions from the provided context. Label all implementation approaches as recommendations.`;
 
 export function buildChatPrompt(question: string, context: string): string {
   return `Repository Context:

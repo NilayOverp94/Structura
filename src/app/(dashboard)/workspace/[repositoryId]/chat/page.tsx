@@ -108,7 +108,10 @@ export default function AskCodebasePage() {
       const response = await fetch(`/api/repositories/${activeId}/chat`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ message: textToSend.trim() }),
+        body: JSON.stringify({
+          message: textToSend.trim(),
+          history: messages.slice(-6).map((m) => ({ role: m.role, content: m.content })),
+        }),
       });
 
       const data = await response.json();
@@ -234,7 +237,7 @@ export default function AskCodebasePage() {
                             whileHover={{ y: -2, transition: { duration: 0.15 } }}
                           >
                             <Link
-                              href={`/workspace/${repoId}/files?file=${encodeURIComponent(cite.file_path)}`}
+                              href={`/workspace/${repoId}/files?file=${encodeURIComponent(cite.file_path)}&line=${cite.start_line}`}
                               className="p-2 rounded bg-surface-secondary border border-border hover:border-zinc-500 transition-colors block text-left"
                             >
                               <div className="flex items-center gap-1.5 text-txt-primary font-mono text-[11px] truncate">
