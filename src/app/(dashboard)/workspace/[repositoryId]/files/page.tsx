@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams, useParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { notionEase, notionTransition } from '@/lib/animations/motion';
 import { 
   FileCode2, 
   Search, 
@@ -137,8 +139,10 @@ function FileExplorerContent() {
                 filteredFiles.map((file) => {
                   const isSelected = selectedFile?.file_path === file.file_path;
                   return (
-                    <button
+                    <motion.button
                       key={file.id}
+                      whileHover={{ x: 2 }}
+                      transition={{ duration: 0.15, ease: notionEase }}
                       onClick={() => {
                         setSelectedFile(file);
                         setAiExplanation(null);
@@ -146,7 +150,7 @@ function FileExplorerContent() {
                       className={cn(
                         'w-full text-left px-2.5 py-1.5 rounded text-xs font-mono flex items-center justify-between transition-colors',
                         isSelected
-                          ? 'bg-zinc-800 text-white font-medium border border-zinc-700'
+                          ? 'bg-zinc-800 text-white font-medium border border-zinc-700 shadow-sm'
                           : 'text-txt-secondary hover:bg-surface-secondary hover:text-txt-primary'
                       )}
                     >
@@ -157,7 +161,7 @@ function FileExplorerContent() {
                       <span className="text-[10px] text-txt-muted ml-1 flex-shrink-0">
                         {formatFileSize(file.file_size)}
                       </span>
-                    </button>
+                    </motion.button>
                   );
                 })
               )}
@@ -203,30 +207,42 @@ function FileExplorerContent() {
                 </div>
 
                 {/* AI Explanation Drawer if triggered */}
-                {aiExplanation && (
-                  <div className="border-b border-border bg-surface-primary p-4 animate-slide-down">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-txt-primary">
-                          <Sparkles className="h-3.5 w-3.5 text-txt-primary" />
-                          AI File Analysis & Importance
+                <AnimatePresence>
+                  {aiExplanation && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={notionTransition}
+                      className="overflow-hidden border-b border-border bg-surface-primary p-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-txt-primary">
+                            <Sparkles className="h-3.5 w-3.5 text-txt-primary" />
+                            AI File Analysis & Importance
+                          </div>
+                          <p className="text-xs text-txt-secondary leading-relaxed">
+                            {aiExplanation}
+                          </p>
                         </div>
-                        <p className="text-xs text-txt-secondary leading-relaxed">
-                          {aiExplanation}
-                        </p>
+                        <button
+                          onClick={() => setAiExplanation(null)}
+                          className="text-xs text-txt-muted hover:text-txt-primary"
+                        >
+                          ✕
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setAiExplanation(null)}
-                        className="text-xs text-txt-muted hover:text-txt-primary"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Code Body */}
-                <div 
+                <motion.div 
+                  key={selectedFile.file_path}
+                  initial={{ opacity: 0.4 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.18 }}
                   className={cn(
                     "flex-1 overflow-auto p-4 font-mono leading-relaxed bg-surface-secondary",
                     prefs.wordWrap ? "whitespace-pre-wrap break-words" : "whitespace-pre"
@@ -249,7 +265,7 @@ function FileExplorerContent() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </motion.div>
               </>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-txt-muted text-xs p-6 space-y-2">

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   GitFork, 
   Search, 
@@ -13,6 +14,7 @@ import { AppHeader } from '@/components/layout/app-header';
 import { WorkspaceSidebar } from '@/components/layout/workspace-sidebar';
 import { Badge } from '@/components/ui/badge';
 import { DependencyInfo, Repository } from '@/types';
+import { notionSpring, notionEase, staggerContainer, fadeUpItem } from '@/lib/animations/motion';
 
 export default function DependenciesPage() {
   const params = useParams();
@@ -103,20 +105,30 @@ export default function DependenciesPage() {
                 ))}
               </select>
 
-              <div className="flex rounded-lg border border-border p-0.5 bg-surface-secondary">
-                {(['all', 'production', 'development'] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTypeFilter(t)}
-                    className={`px-2.5 py-1 text-xs rounded capitalize transition-colors ${
-                      typeFilter === t
-                        ? 'bg-zinc-800 text-white font-medium border border-zinc-700'
-                        : 'text-txt-secondary hover:text-txt-primary'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+              <div className="flex rounded-lg border border-border p-0.5 bg-surface-secondary relative">
+                {(['all', 'production', 'development'] as const).map((t) => {
+                  const isActive = typeFilter === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTypeFilter(t)}
+                      className={`relative px-2.5 py-1 text-xs rounded capitalize transition-colors z-10 ${
+                        isActive
+                          ? 'text-white font-medium'
+                          : 'text-txt-secondary hover:text-txt-primary'
+                      }`}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="dep-type-pill"
+                          className="absolute inset-0 bg-zinc-800 border border-zinc-700 rounded shadow-sm -z-10"
+                          transition={notionSpring}
+                        />
+                      )}
+                      {t}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -137,9 +149,19 @@ export default function DependenciesPage() {
               </p>
             </div>
           ) : (
-            <div className="card divide-y divide-border overflow-hidden p-0">
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="card divide-y divide-border overflow-hidden p-0"
+            >
               {filteredDependencies.map((dep) => (
-                <div key={dep.name} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-tertiary transition-colors">
+                <motion.div 
+                  key={dep.name} 
+                  variants={fadeUpItem}
+                  whileHover={{ backgroundColor: 'var(--surface-tertiary)' }}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors"
+                >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm font-semibold text-txt-primary">
@@ -162,9 +184,9 @@ export default function DependenciesPage() {
                       {dep.category}
                     </Badge>
                   )}
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </main>
       </div>

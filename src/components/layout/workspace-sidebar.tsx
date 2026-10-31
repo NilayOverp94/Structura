@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { 
   Layers, 
   Network, 
@@ -97,14 +98,23 @@ export function WorkspaceSidebar({ repository }: WorkspaceSidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                'relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
                 isActive
-                  ? 'bg-accent/10 text-accent border border-accent/20'
-                  : 'text-txt-secondary hover:text-txt-primary hover:bg-surface-secondary'
+                  ? 'text-txt-primary font-semibold'
+                  : 'text-txt-secondary hover:text-txt-primary hover:bg-surface-secondary/70'
               )}
             >
-              <item.icon className={cn('h-4 w-4', isActive ? 'text-accent' : 'text-txt-muted')} />
-              {item.label}
+              {isActive && (
+                <motion.div
+                  layoutId="sidebar-active-pill"
+                  className="absolute inset-0 bg-surface-secondary rounded-lg border border-border"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2.5">
+                <item.icon className={cn('h-4 w-4', isActive ? 'text-txt-primary' : 'text-txt-muted')} />
+                {item.label}
+              </span>
             </Link>
           );
         })}

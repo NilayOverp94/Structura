@@ -3,6 +3,8 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import { notionEase, notionTransition } from '@/lib/animations/motion';
 import ReactFlow, { 
   Background, 
   Controls, 
@@ -357,62 +359,70 @@ export default function ArchitecturePage() {
             </div>
 
             {/* Component Detail Sidebar */}
-            {selectedNode && (
-              <div className="w-full lg:w-84 border-t lg:border-t-0 lg:border-l border-border bg-surface-primary p-5 flex flex-col justify-between overflow-y-auto max-h-80 lg:max-h-full shrink-0 shadow-lg">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-border">
-                    <span className="section-label">Module Inspector</span>
-                    <Badge variant="default" className="text-[10px] capitalize font-mono">
-                      {selectedNode.category}
-                    </Badge>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-bold text-txt-primary">
-                      {selectedNode.name || selectedNode.label.split('\n')[0]}
-                    </h3>
-                    <p className="text-xs font-mono text-txt-muted mt-0.5 truncate">
-                      Primary path: {selectedNode.path}
-                    </p>
-                  </div>
-
-                  <p className="text-xs text-txt-secondary leading-relaxed">
-                    {selectedNode.description}
-                  </p>
-
-                  {selectedNode.files && selectedNode.files.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-txt-muted uppercase tracking-wider font-mono">
-                        <span>Encapsulated Files</span>
-                        <span>{selectedNode.files.length}</span>
-                      </div>
-                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                        {selectedNode.files.map((file: string) => (
-                          <Link
-                            key={file}
-                            href={`/workspace/${repoId}/files?file=${encodeURIComponent(file)}`}
-                            className="text-xs font-mono text-txt-secondary hover:text-txt-primary bg-surface-secondary hover:bg-surface-tertiary px-2.5 py-1.5 rounded border border-border truncate flex items-center justify-between group transition-colors"
-                          >
-                            <span className="truncate">{file}</span>
-                            <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0" />
-                          </Link>
-                        ))}
-                      </div>
+            <AnimatePresence>
+              {selectedNode && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={notionTransition}
+                  className="w-full lg:w-84 border-t lg:border-t-0 lg:border-l border-border bg-surface-primary p-5 flex flex-col justify-between overflow-y-auto max-h-80 lg:max-h-full shrink-0 shadow-lg"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-border">
+                      <span className="section-label">Module Inspector</span>
+                      <Badge variant="default" className="text-[10px] capitalize font-mono">
+                        {selectedNode.category}
+                      </Badge>
                     </div>
-                  )}
-                </div>
 
-                <div className="pt-4 border-t border-border mt-4">
-                  <Link
-                    href={`/workspace/${repoId}/files?file=${encodeURIComponent(selectedNode.path)}`}
-                    className="btn-primary w-full text-xs"
-                  >
-                    <FileCode2 className="h-3.5 w-3.5 mr-1" />
-                    Inspect In File Explorer
-                  </Link>
-                </div>
-              </div>
-            )}
+                    <div>
+                      <h3 className="text-sm font-bold text-txt-primary">
+                        {selectedNode.name || selectedNode.label.split('\n')[0]}
+                      </h3>
+                      <p className="text-xs font-mono text-txt-muted mt-0.5 truncate">
+                        Primary path: {selectedNode.path}
+                      </p>
+                    </div>
+
+                    <p className="text-xs text-txt-secondary leading-relaxed">
+                      {selectedNode.description}
+                    </p>
+
+                    {selectedNode.files && selectedNode.files.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-txt-muted uppercase tracking-wider font-mono">
+                          <span>Encapsulated Files</span>
+                          <span>{selectedNode.files.length}</span>
+                        </div>
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                          {selectedNode.files.map((file: string) => (
+                            <Link
+                              key={file}
+                              href={`/workspace/${repoId}/files?file=${encodeURIComponent(file)}`}
+                              className="text-xs font-mono text-txt-secondary hover:text-txt-primary bg-surface-secondary hover:bg-surface-tertiary px-2.5 py-1.5 rounded border border-border truncate flex items-center justify-between group transition-colors"
+                            >
+                              <span className="truncate">{file}</span>
+                              <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ml-1 shrink-0" />
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t border-border mt-4">
+                    <Link
+                      href={`/workspace/${repoId}/files?file=${encodeURIComponent(selectedNode.path)}`}
+                      className="btn-primary w-full text-xs"
+                    >
+                      <FileCode2 className="h-3.5 w-3.5 mr-1" />
+                      Inspect In File Explorer
+                    </Link>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

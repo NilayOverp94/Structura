@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { notionSpring, notionTransition, notionHoverCard, fadeUpItem } from '@/lib/animations/motion';
 import { 
   User, 
   Mail, 
@@ -214,7 +216,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Settings Navigation Tabs */}
-        <div className="flex border-b border-border mb-8 overflow-x-auto no-scrollbar gap-2">
+        <div className="flex border-b border-border mb-8 overflow-x-auto no-scrollbar gap-1 relative">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -222,28 +224,43 @@ export default function SettingsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium border-b-2 whitespace-nowrap transition-colors ${
+                className={`relative flex items-center gap-2 px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-colors ${
                   isActive
-                    ? 'border-txt-primary text-txt-primary'
-                    : 'border-transparent text-txt-muted hover:text-txt-secondary hover:border-border'
+                    ? 'text-txt-primary'
+                    : 'text-txt-muted hover:text-txt-secondary'
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                {tab.label}
+                <Icon className="h-4 w-4 relative z-10" />
+                <span className="relative z-10">{tab.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="settings-tab-pill"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-txt-primary"
+                    transition={notionSpring}
+                  />
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* Tab 1: Profile & Account */}
-        {activeTab === 'profile' && (
-          <div className="space-y-6">
-            <div className="card p-6 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-surface-tertiary border border-border flex items-center justify-center text-lg font-bold text-txt-primary shadow-inner">
-                    {userEmail ? userEmail.charAt(0).toUpperCase() : 'D'}
-                  </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={notionTransition}
+          >
+            {/* Tab 1: Profile & Account */}
+            {activeTab === 'profile' && (
+              <div className="space-y-6">
+                <div className="card p-6 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-surface-tertiary border border-border flex items-center justify-center text-lg font-bold text-txt-primary shadow-inner">
+                        {(prefs.displayName || userEmail || 'N').trim().charAt(0).toUpperCase()}
+                      </div>
                   <div>
                     <h3 className="text-base font-semibold text-txt-primary">
                       {prefs.displayName || 'Developer'}
@@ -952,6 +969,8 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

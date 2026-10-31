@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, Settings, Plus, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { StructuraLogo } from '@/components/brand/structura-logo';
 import { createClient } from '@/lib/supabase/client';
 import { getUserPreferences } from '@/lib/settings/user-settings';
+import { dropdownMotion } from '@/lib/animations/motion';
 import { useState, useEffect, useRef } from 'react';
 
 interface AppHeaderProps {
@@ -141,32 +143,40 @@ export function AppHeader({ userEmail }: AppHeaderProps) {
             </div>
           </button>
 
-          {menuOpen && (
-            <div className="absolute right-0 mt-2 w-52 rounded-xl border border-border bg-surface-secondary shadow-2xl py-1 text-xs text-txt-secondary z-50 animate-slide-down">
-              <div className="px-3.5 py-2.5 border-b border-border">
-                <p className="font-semibold text-txt-primary truncate capitalize">{displayName}</p>
-                <p className="text-[11px] text-txt-muted truncate">{profileEmail || userEmail || 'Active Session'}</p>
-              </div>
-              <Link
-                href="/settings"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3.5 py-2 text-txt-secondary hover:bg-surface-tertiary hover:text-txt-primary transition-colors"
+          <AnimatePresence>
+            {menuOpen && (
+              <motion.div
+                initial={dropdownMotion.initial}
+                animate={dropdownMotion.animate}
+                exit={dropdownMotion.exit}
+                transition={dropdownMotion.transition}
+                className="absolute right-0 mt-2 w-52 rounded-xl border border-border bg-surface-secondary shadow-2xl py-1 text-xs text-txt-secondary z-50 origin-top-right backdrop-blur-md"
               >
-                <Settings className="h-3.5 w-3.5" />
-                Settings & Preferences
-              </Link>
-              <button
-                onClick={() => {
-                  setMenuOpen(false);
-                  handleSignOut();
-                }}
-                className="flex items-center gap-2.5 w-full text-left px-3.5 py-2 text-status-error hover:bg-surface-tertiary transition-colors"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sign Out
-              </button>
-            </div>
-          )}
+                <div className="px-3.5 py-2.5 border-b border-border">
+                  <p className="font-semibold text-txt-primary truncate capitalize">{displayName}</p>
+                  <p className="text-[11px] text-txt-muted truncate">{profileEmail || userEmail || 'Active Session'}</p>
+                </div>
+                <Link
+                  href="/settings"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3.5 py-2 text-txt-secondary hover:bg-surface-tertiary hover:text-txt-primary transition-colors"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Settings & Preferences
+                </Link>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    handleSignOut();
+                  }}
+                  className="flex items-center gap-2.5 w-full text-left px-3.5 py-2 text-status-error hover:bg-surface-tertiary transition-colors"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

@@ -12,6 +12,8 @@ import {
   FolderGit2,
   Loader2
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { notionEase } from '@/lib/animations/motion';
 import { AppHeader } from '@/components/layout/app-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -64,17 +66,27 @@ export default function DashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Welcome Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border">
+        <motion.div 
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: notionEase }}
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-border"
+        >
           <div>
             <h1 className="text-2xl font-bold text-txt-primary tracking-tight">Developer Workspace</h1>
             <p className="text-sm text-txt-secondary mt-1">
               Select an analyzed codebase to inspect its architecture, or submit a new GitHub repository.
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Repository Submission Panel */}
-        <div className="card space-y-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.06, ease: notionEase }}
+          className="card space-y-4"
+        >
           <div className="flex items-center gap-2">
             <FolderGit2 className="h-5 w-5 text-txt-primary" />
             <h2 className="text-base font-semibold text-txt-primary">Analyze New GitHub Repository</h2>
@@ -100,28 +112,48 @@ export default function DashboardPage() {
               <p className="text-xs text-status-error mt-2">{error}</p>
             )}
           </form>
-        </div>
+        </motion.div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="card p-4">
+        <motion.div 
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+            },
+          }}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        >
+          <motion.div 
+            variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
+            className="card p-4 transition-colors hover:bg-surface-secondary/70"
+          >
             <p className="section-label">Total Repositories</p>
             <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{repositories.length}</p>
             <p className="text-xs text-txt-secondary mt-1">Active in your workspace</p>
-          </div>
-          <div className="card p-4">
+          </motion.div>
+          <motion.div 
+            variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
+            className="card p-4 transition-colors hover:bg-surface-secondary/70"
+          >
             <p className="section-label">Combined GitHub Stars</p>
             <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{totalStars.toLocaleString()}</p>
             <p className="text-xs text-txt-secondary mt-1">Across analyzed codebases</p>
-          </div>
-          <div className="card p-4">
+          </motion.div>
+          <motion.div 
+            variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
+            className="card p-4 transition-colors hover:bg-surface-secondary/70"
+          >
             <p className="section-label">Languages Detected</p>
             <p className="text-2xl font-bold text-txt-primary mt-1 font-mono">{detectedLanguages.length || 0}</p>
             <p className="text-xs text-txt-secondary mt-1">
               {detectedLanguages.slice(0, 3).join(', ') || 'Ready for ingestion'}
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Analyzed Repositories */}
         <div className="space-y-4">
@@ -136,18 +168,39 @@ export default function DashboardPage() {
               Loading workspaces...
             </div>
           ) : repositories.length === 0 ? (
-            <div className="card text-center py-14 space-y-3">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="card text-center py-14 space-y-3"
+            >
               <FolderGit2 className="h-10 w-10 text-txt-muted mx-auto" />
               <h3 className="text-sm font-semibold text-txt-primary">No repositories analyzed yet</h3>
               <p className="text-xs text-txt-secondary max-w-sm mx-auto">
                 Paste any public GitHub repository URL into the field above to index its architecture, dependencies, and files.
               </p>
-            </div>
+            </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <motion.div 
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.07, delayChildren: 0.15 },
+                },
+              }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
               {repositories.map((repo) => (
-                <div
+                <motion.div
                   key={repo.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 14 },
+                    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: notionEase } },
+                  }}
+                  whileHover={{ y: -3, transition: { duration: 0.18, ease: notionEase } }}
                   className="card-hover flex flex-col justify-between p-5 space-y-4"
                 >
                   <div>
@@ -196,9 +249,9 @@ export default function DashboardPage() {
                       <ArrowRight className="h-3 w-3" />
                     </Link>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </div>
       </main>

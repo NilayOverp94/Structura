@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { notionEase } from '@/lib/animations/motion';
 import { 
   MessageSquare, 
   Send, 
@@ -189,8 +191,11 @@ export default function AskCodebasePage() {
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
             {messages.map((msg) => (
-              <div
+              <motion.div
                 key={msg.id}
+                initial={{ opacity: 0, y: 10, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.24, ease: notionEase }}
                 className={`flex gap-3 max-w-3xl ${
                   msg.role === 'user' ? 'ml-auto justify-end' : ''
                 }`}
@@ -224,19 +229,23 @@ export default function AskCodebasePage() {
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {msg.citations.map((cite, idx) => (
-                          <Link
+                          <motion.div
                             key={idx}
-                            href={`/workspace/${repoId}/files?file=${encodeURIComponent(cite.file_path)}`}
-                            className="p-2 rounded bg-surface-secondary border border-border hover:border-zinc-500 transition-colors block text-left"
+                            whileHover={{ y: -2, transition: { duration: 0.15 } }}
                           >
-                            <div className="flex items-center gap-1.5 text-txt-primary font-mono text-[11px] truncate">
-                              <FileCode2 className="h-3 w-3 text-txt-muted flex-shrink-0" />
-                              <span className="truncate">{cite.file_path}</span>
-                            </div>
-                            <p className="text-[10px] text-txt-muted mt-0.5 font-mono">
-                              Lines {cite.start_line}–{cite.end_line}
-                            </p>
-                          </Link>
+                            <Link
+                              href={`/workspace/${repoId}/files?file=${encodeURIComponent(cite.file_path)}`}
+                              className="p-2 rounded bg-surface-secondary border border-border hover:border-zinc-500 transition-colors block text-left"
+                            >
+                              <div className="flex items-center gap-1.5 text-txt-primary font-mono text-[11px] truncate">
+                                <FileCode2 className="h-3 w-3 text-txt-muted flex-shrink-0" />
+                                <span className="truncate">{cite.file_path}</span>
+                              </div>
+                              <p className="text-[10px] text-txt-muted mt-0.5 font-mono">
+                                Lines {cite.start_line}–{cite.end_line}
+                              </p>
+                            </Link>
+                          </motion.div>
                         ))}
                       </div>
                     </div>
@@ -270,11 +279,15 @@ export default function AskCodebasePage() {
                     {(typeof window !== 'undefined' ? (localStorage.getItem('structura_username') || prefs?.displayName || 'N') : 'N').trim().charAt(0).toUpperCase()}
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
 
             {loading && (
-              <div className="flex gap-3 max-w-3xl">
+              <motion.div 
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-3 max-w-3xl"
+              >
                 <div className="w-7 h-7 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-white">
                   <Bot className="h-4 w-4" />
                 </div>
@@ -282,7 +295,7 @@ export default function AskCodebasePage() {
                   <Sparkles className="h-4 w-4 text-txt-primary animate-pulse" />
                   Searching code chunks and synthesizing response...
                 </div>
-              </div>
+              </motion.div>
             )}
 
             <div ref={messagesEndRef} />

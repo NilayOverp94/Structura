@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { notionEase } from '@/lib/animations/motion';
 import { 
   Network, 
   FileCode2, 
@@ -74,9 +76,19 @@ export default function WorkspaceOverviewPage() {
               </Link>
             </div>
           ) : (
-            <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, ease: notionEase }}
+              className="space-y-8"
+            >
               {/* Header */}
-              <div className="space-y-3 pb-6 border-b border-border">
+              <motion.div 
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: notionEase }}
+                className="space-y-3 pb-6 border-b border-border"
+              >
                 <div className="flex items-center gap-2 text-xs font-mono text-txt-muted">
                   <span>{repository.owner}</span>
                   <span>/</span>
@@ -115,11 +127,16 @@ export default function WorkspaceOverviewPage() {
                     </span>
                   )}
                 </div>
-              </div>
+              </motion.div>
 
               {/* AI Repository Overview */}
               {insights?.overview && (
-                <div className="card space-y-4">
+                <motion.div 
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.08, ease: notionEase }}
+                  className="card space-y-4"
+                >
                   <div className="flex items-center gap-2">
                     <Layers className="h-4 w-4 text-txt-primary" />
                     <h2 className="text-sm font-semibold text-txt-primary">Architecture & Purpose Overview</h2>
@@ -127,111 +144,96 @@ export default function WorkspaceOverviewPage() {
                   <p className="text-xs text-txt-secondary leading-relaxed whitespace-pre-line">
                     {insights.overview}
                   </p>
-                </div>
+                </motion.div>
               )}
 
               {/* Quick Access Tools */}
               <div>
                 <h2 className="text-sm font-semibold text-txt-primary mb-4">Codebase Intelligence Tools</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Link
-                    href={`/workspace/${repoId}/architecture`}
-                    className="card-hover p-4 flex flex-col justify-between group"
-                  >
-                    <div>
-                      <Network className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
-                      <h3 className="text-sm font-semibold text-txt-primary">Interactive Architecture</h3>
-                      <p className="text-xs text-txt-secondary mt-1">
-                        Visual graph of modules, entry points, and boundaries.
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
-                      Explore Diagram <ArrowRight className="h-3 w-3 ml-1" />
-                    </div>
-                  </Link>
-
-                  <Link
-                    href={`/workspace/${repoId}/files`}
-                    className="card-hover p-4 flex flex-col justify-between group"
-                  >
-                    <div>
-                      <FileCode2 className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
-                      <h3 className="text-sm font-semibold text-txt-primary">File Explorer</h3>
-                      <p className="text-xs text-txt-secondary mt-1">
-                        Source tree viewer with grounded AI explanations for each file.
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
-                      Browse Files <ArrowRight className="h-3 w-3 ml-1" />
-                    </div>
-                  </Link>
-
-                  <Link
-                    href={`/workspace/${repoId}/chat`}
-                    className="card-hover p-4 flex flex-col justify-between group"
-                  >
-                    <div>
-                      <MessageSquare className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
-                      <h3 className="text-sm font-semibold text-txt-primary">Ask Your Codebase</h3>
-                      <p className="text-xs text-txt-secondary mt-1">
-                        RAG-powered conversational assistant with verifiable code citations.
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
-                      Open Assistant <ArrowRight className="h-3 w-3 ml-1" />
-                    </div>
-                  </Link>
-
-                  <Link
-                    href={`/workspace/${repoId}/dependencies`}
-                    className="card-hover p-4 flex flex-col justify-between group"
-                  >
-                    <div>
-                      <GitFork className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
-                      <h3 className="text-sm font-semibold text-txt-primary">Dependencies</h3>
-                      <p className="text-xs text-txt-secondary mt-1">
-                        Production and development packages extracted from manifests.
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
-                      View Dependencies <ArrowRight className="h-3 w-3 ml-1" />
-                    </div>
-                  </Link>
-
-                  <Link
-                    href={`/workspace/${repoId}/roadmap`}
-                    className="card-hover p-4 flex flex-col justify-between group"
-                  >
-                    <div>
-                      <Map className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
-                      <h3 className="text-sm font-semibold text-txt-primary">Contributor Roadmap</h3>
-                      <p className="text-xs text-txt-secondary mt-1">
-                        Structured step-by-step onboarding plan for contributors.
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
-                      View Roadmap <ArrowRight className="h-3 w-3 ml-1" />
-                    </div>
-                  </Link>
-
-                  <Link
-                    href={`/workspace/${repoId}/issues`}
-                    className="card-hover p-4 flex flex-col justify-between group"
-                  >
-                    <div>
-                      <Bug className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
-                      <h3 className="text-sm font-semibold text-txt-primary">Feature & Bug Locator</h3>
-                      <p className="text-xs text-txt-secondary mt-1">
-                        Find exact files and functions to modify for new features or bugfixes.
-                      </p>
-                    </div>
-                    <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
-                      Locate Code <ArrowRight className="h-3 w-3 ml-1" />
-                    </div>
-                  </Link>
-                </div>
+                <motion.div 
+                  initial="hidden"
+                  animate="show"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    show: {
+                      opacity: 1,
+                      transition: { staggerChildren: 0.06, delayChildren: 0.12 },
+                    },
+                  }}
+                  className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                >
+                  {[
+                    {
+                      href: `/workspace/${repoId}/architecture`,
+                      icon: Network,
+                      title: 'Interactive Architecture',
+                      desc: 'Visual graph of modules, entry points, and boundaries.',
+                      action: 'Explore Diagram',
+                    },
+                    {
+                      href: `/workspace/${repoId}/files`,
+                      icon: FileCode2,
+                      title: 'File Explorer',
+                      desc: 'Source tree viewer with grounded AI explanations for each file.',
+                      action: 'Browse Files',
+                    },
+                    {
+                      href: `/workspace/${repoId}/chat`,
+                      icon: MessageSquare,
+                      title: 'Ask Your Codebase',
+                      desc: 'RAG-powered conversational assistant with verifiable code citations.',
+                      action: 'Open Assistant',
+                    },
+                    {
+                      href: `/workspace/${repoId}/dependencies`,
+                      icon: GitFork,
+                      title: 'Dependencies',
+                      desc: 'Production and development packages extracted from manifests.',
+                      action: 'View Dependencies',
+                    },
+                    {
+                      href: `/workspace/${repoId}/roadmap`,
+                      icon: Map,
+                      title: 'Contributor Roadmap',
+                      desc: 'Structured step-by-step onboarding plan for contributors.',
+                      action: 'View Roadmap',
+                    },
+                    {
+                      href: `/workspace/${repoId}/issues`,
+                      icon: Bug,
+                      title: 'Feature & Bug Locator',
+                      desc: 'Find exact files and functions to modify for new features or bugfixes.',
+                      action: 'Locate Code',
+                    },
+                  ].map((tool) => (
+                    <motion.div
+                      key={tool.title}
+                      variants={{
+                        hidden: { opacity: 0, y: 12 },
+                        show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: notionEase } },
+                      }}
+                      whileHover={{ y: -3, transition: { duration: 0.18, ease: notionEase } }}
+                    >
+                      <Link
+                        href={tool.href}
+                        className="card-hover p-4 flex flex-col justify-between h-full group block"
+                      >
+                        <div>
+                          <tool.icon className="h-5 w-5 text-txt-primary mb-2 group-hover:scale-105 transition-transform" />
+                          <h3 className="text-sm font-semibold text-txt-primary">{tool.title}</h3>
+                          <p className="text-xs text-txt-secondary mt-1">
+                            {tool.desc}
+                          </p>
+                        </div>
+                        <div className="mt-4 flex items-center text-xs text-txt-primary font-medium">
+                          {tool.action} <ArrowRight className="h-3 w-3 ml-1" />
+                        </div>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </motion.div>
               </div>
-            </>
+            </motion.div>
           )}
         </main>
       </div>

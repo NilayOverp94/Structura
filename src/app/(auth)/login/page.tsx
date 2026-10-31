@@ -3,11 +3,13 @@
 import { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StructuraLogo } from '@/components/brand/structura-logo';
 import { createClient } from '@/lib/supabase/client';
+import { notionEase } from '@/lib/animations/motion';
 
 function LoginForm() {
   const router = useRouter();
@@ -111,7 +113,12 @@ function LoginForm() {
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+      <motion.div 
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: notionEase }}
+        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0"
+      >
         <div className="card space-y-5">
           {error && (
             <div className="p-3 rounded-lg border border-status-error/30 bg-status-error-muted/20 text-xs text-status-error flex items-start gap-2">
@@ -155,7 +162,7 @@ function LoginForm() {
             </Button>
           </form>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
